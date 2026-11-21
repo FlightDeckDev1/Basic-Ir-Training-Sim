@@ -1,0 +1,3130 @@
+<!DOCTYPE html>
+<html lang="hu" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NAV-SIM // VOR &amp; NDB Radio Navigation Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --bg-app: #f1f5f9;
+      --bg-header: rgba(255, 255, 255, 0.94);
+      --bg-card: #ffffff;
+      --bg-subcard: #f8fafc;
+      --bg-pill: #e2e8f0;
+      --bg-btn: #f1f5f9;
+      --bg-btn-hover: #e2e8f0;
+      --border-card: #cbd5e1;
+      --border-subtle: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --shadow-card: 0 8px 24px -8px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.05);
+      --accent-cyan: #0284c7;
+      --accent-amber: #d97706;
+      --accent-emerald: #059669;
+      --accent-magenta: #c026d3;
+    }
+
+    html.dark {
+      --bg-app: #070b14;
+      --bg-header: rgba(11, 17, 32, 0.94);
+      --bg-card: linear-gradient(145deg, rgba(22, 32, 56, 0.78), rgba(11, 17, 32, 0.95));
+      --bg-subcard: rgba(15, 23, 42, 0.75);
+      --bg-pill: #070b14;
+      --bg-btn: #162038;
+      --bg-btn-hover: #223152;
+      --border-card: rgba(56, 189, 248, 0.16);
+      --border-subtle: rgba(51, 65, 85, 0.65);
+      --text-primary: #f8fafc;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --shadow-card: 0 12px 32px -10px rgba(0, 0, 0, 0.75), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+      --accent-cyan: #38bdf8;
+      --accent-amber: #f59e0b;
+      --accent-emerald: #10b981;
+      --accent-magenta: #e879f9;
+    }
+
+    body {
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      user-select: none;
+      -webkit-user-select: none;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .tabular-nums, .font-mono {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .app-header {
+      background-color: var(--bg-header);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .instrument-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      box-shadow: var(--shadow-card);
+    }
+
+    .sub-panel {
+      background-color: var(--bg-subcard);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .pill-container {
+      background-color: var(--bg-pill);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .sim-btn {
+      background-color: var(--bg-btn);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      transition: all 0.15s ease;
+    }
+    .sim-btn:hover {
+      background-color: var(--bg-btn-hover);
+      color: var(--text-primary);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 116, 139, 0.4);
+      border-radius: 9999px;
+    }
+
+    /* Range sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: var(--bg-pill);
+      border: 1px solid var(--border-subtle);
+      height: 6px;
+      border-radius: 9999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #0284c7;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 8px rgba(2, 132, 199, 0.45);
+    }
+    html.dark input[type="range"]::-webkit-slider-thumb {
+      background: #38bdf8;
+      border-color: #0b1120;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.55);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- TOP HEADER & CONTROLS -->
+  <header class="app-header sticky top-0 z-30 backdrop-blur-md px-3 sm:px-5 py-3">
+    <div class="max-w-[1640px] mx-auto flex flex-col gap-2.5">
+
+      <!-- Row 1: Brand, Avionics Mode Switcher, Language Switcher, Theme Switcher -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5">
+
+        <!-- Brand -->
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 20 7 20 17 12 22 4 17 4 7 12 2"></polygon>
+              <circle cx="12" cy="12" r="2.5"></circle>
+              <line x1="12" y1="2" x2="12" y2="6"></line>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-bold tracking-tight">
+                NAV-SIM <span class="text-sky-600 dark:text-sky-400 font-mono text-xs sm:text-sm font-semibold">// VOR &amp; NDB</span>
+              </h1>
+              <span class="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30">
+                IFR TRAINER
+              </span>
+            </div>
+            <p id="uiSubtitle" class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
+              Interaktív rádiónavigációs műszer- és eljárásszimulátor
+            </p>
+          </div>
+        </div>
+
+        <!-- Center / Right Switchers: Avionics Mode + Language + Dark/Light -->
+        <div class="flex flex-wrap items-center gap-2">
+
+          <!-- Dual Avionics Mode Switcher (Basic CDI/RMI vs Modern Garmin HSI) -->
+          <div class="pill-container inline-flex items-center rounded-xl p-0.5 text-xs" role="group" aria-label="Avionics Mode">
+            <button type="button" id="btnAvionicsBasic" data-avionics="basic" class="avionics-btn px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="9"></circle>
+                <line x1="12" y1="12" x2="16" y2="8"></line>
+              </svg>
+              <span id="txtAvionicsBasic">Alap műszerek (CDI/RMI)</span>
+            </button>
+            <button type="button" id="btnAvionicsGarmin" data-avionics="garmin" class="avionics-btn px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                <circle cx="12" cy="12" r="4"></circle>
+              </svg>
+              <span id="txtAvionicsGarmin">Modern Garmin (HSI)</span>
+            </button>
+          </div>
+
+          <!-- 4-Language Switcher (HU | EN | DE | IT) -->
+          <div class="pill-container inline-flex items-center rounded-xl p-0.5 font-mono text-xs" role="group" aria-label="Language Switcher">
+            <button type="button" data-lang="hu" class="lang-btn px-2 py-1.5 rounded-lg font-bold transition">HU</button>
+            <button type="button" data-lang="en" class="lang-btn px-2 py-1.5 rounded-lg font-semibold transition">EN</button>
+            <button type="button" data-lang="de" class="lang-btn px-2 py-1.5 rounded-lg font-semibold transition">DE</button>
+            <button type="button" data-lang="it" class="lang-btn px-2 py-1.5 rounded-lg font-semibold transition">IT</button>
+          </div>
+
+          <!-- Dark / Light Theme Toggle -->
+          <button type="button" id="btnThemeToggle" class="sim-btn px-2.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5" title="Sötét / Világos mód">
+            <svg id="iconSun" class="w-4 h-4 text-amber-400 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg id="iconMoon" class="w-4 h-4 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+            <span id="txtThemeLabel" class="hidden sm:inline">Világos</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Row 2: Scenario Selector & Action Utilities -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/80 dark:border-slate-800/80">
+        <div class="flex flex-wrap items-center gap-2">
+          <label id="lblScenario" for="scenarioSelect" class="text-xs font-medium text-slate-600 dark:text-slate-400">
+            Gyakorló feladat:
+          </label>
+          <select id="scenarioSelect" class="sim-btn text-xs sm:text-sm rounded-xl px-3 py-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+            <option value="free">1. Szabad repülés (Free Flight)</option>
+            <option value="vor_intercept">2. VOR Radiál elfogása (090° TO)</option>
+            <option value="vor_outbound">3. VOR Outbound radiál tartása oldalszélben (240° FROM)</option>
+            <option value="ndb_tracking">4. NDB QDM / QDR elfogás (360° QDM)</option>
+            <option value="vor_holding">5. VOR Standard Holding eljárás (180° INB)</option>
+            <option value="ndb_holding">6. NDB Holding eljárás oldalszéllel (270° INB)</option>
+          </select>
+
+          <button id="btnRandomize" class="sim-btn px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 active:scale-95">
+            <svg class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 3 21 3 21 8"></polyline>
+              <line x1="4" y1="20" x2="21" y2="3"></line>
+              <polyline points="21 16 21 21 16 21"></polyline>
+              <line x1="15" y1="15" x2="21" y2="21"></line>
+              <line x1="4" y1="4" x2="9" y2="9"></line>
+            </svg>
+            <span id="txtRandomize">Új véletlen pozíció</span>
+          </button>
+
+          <button id="btnReset" class="sim-btn px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 hover:border-rose-500/50 hover:text-rose-600 dark:hover:text-rose-400 active:scale-95">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+            </svg>
+            <span id="txtReset">Reset</span>
+          </button>
+
+          <button id="btnHelpModal" class="px-3 py-1.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 border border-sky-500/30 text-sky-700 dark:text-sky-300 text-xs font-semibold flex items-center gap-1.5 transition">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+              <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span id="txtHelp">Segédlet</span>
+          </button>
+        </div>
+
+        <!-- Active Task Description Pill -->
+        <div class="flex items-center gap-2 text-xs">
+          <span id="badgeTask" class="px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-400 font-mono text-[11px] font-bold shrink-0">
+            FELADAT
+          </span>
+          <span id="scenarioDescription" class="text-slate-700 dark:text-slate-200 font-medium">
+            Szabad repülés: Gyakorold a VOR radiálok követését és az NDB iránybemérést szabadon választott irányokkal.
+          </span>
+        </div>
+      </div>
+
+      <!-- Instructor Tip Line -->
+      <div class="flex items-center justify-between text-[11px] font-mono text-sky-700 dark:text-sky-400">
+        <span id="scenarioHint">Tipp: Használd a ← / → nyilakat a forduláshoz!</span>
+        <span id="avionicsModeHint" class="hidden md:inline text-slate-500 dark:text-slate-400">
+          Aktív műszerfal: Alap analóg órák (CDI / RMI)
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN WORKSPACE -->
+  <main class="flex-1 max-w-[1640px] w-full mx-auto p-3 sm:p-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
+
+    <!-- LEFT & CENTER PANEL: AVIONICS INSTRUMENTS + FLIGHT CONTROLS (7 cols) -->
+    <section class="xl:col-span-7 flex flex-col gap-4">
+
+      <!-- =================================================================== -->
+      <!-- SUITE A: BASIC ANALOG INSTRUMENTS (3-Column Round Gauges)           -->
+      <!-- =================================================================== -->
+      <div id="suiteBasic" class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+
+        <!-- 1. DIRECTIONAL GYRO (HDG / DG) -->
+        <div class="instrument-card rounded-2xl p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h2 id="titleHdg" class="text-xs font-bold tracking-wider uppercase text-slate-700 dark:text-slate-300">Pörgettyűs Iránytű</h2>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 font-mono">HDG / DG</p>
+            </div>
+            <div class="text-right font-mono">
+              <div class="text-sm font-bold" id="readoutHdg">360°</div>
+              <div class="text-[11px] font-semibold text-amber-600 dark:text-amber-400" id="readoutBug">BUG 360°</div>
+            </div>
+          </div>
+
+          <div class="relative w-full aspect-square max-w-[255px] mx-auto my-1">
+            <canvas id="canvasHdg" class="w-full h-full block rounded-full cursor-pointer"></canvas>
+          </div>
+
+          <div class="mt-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">HDG Bug:</span>
+              <div class="flex items-center gap-1">
+                <button data-bug="-10" class="btn-bug sim-btn px-2 py-1 rounded-lg text-xs font-mono">-10°</button>
+                <button data-bug="-1" class="btn-bug sim-btn px-2 py-1 rounded-lg text-xs font-mono">-1°</button>
+                <button id="btnSyncBug" class="px-2 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 border border-amber-500/30 text-[11px] font-mono font-semibold">SYNC</button>
+                <button data-bug="1" class="btn-bug sim-btn px-2 py-1 rounded-lg text-xs font-mono">+1°</button>
+                <button data-bug="10" class="btn-bug sim-btn px-2 py-1 rounded-lg text-xs font-mono">+10°</button>
+              </div>
+            </div>
+            <button id="btnAutoTurnBug" class="w-full py-1.5 rounded-xl sim-btn text-xs font-semibold flex items-center justify-center gap-1.5">
+              <span id="autoBugDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span id="txtAutoTurnBug">HDG Bug követése (KI)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. MECHANICAL VOR INDICATOR (CDI + Separate DME) -->
+        <div class="instrument-card rounded-2xl p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h2 id="titleVor" class="text-xs font-bold tracking-wider uppercase text-slate-700 dark:text-slate-300">VOR Indikátor</h2>
+              <p class="text-[11px] text-sky-600 dark:text-sky-400 font-mono">NAV1 // 114.20 MHz</p>
+            </div>
+            <div class="text-right font-mono">
+              <div class="text-sm font-bold text-sky-600 dark:text-sky-300" id="readoutObs">OBS 090°</div>
+              <div class="text-[11px] font-bold" id="readoutVorFlag">TO</div>
+            </div>
+          </div>
+
+          <div class="relative w-full aspect-square max-w-[255px] mx-auto my-1">
+            <canvas id="canvasVor" class="w-full h-full block rounded-full cursor-grab active:cursor-grabbing"></canvas>
+          </div>
+
+          <div class="mt-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+            <div class="flex items-center justify-between gap-1">
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">OBS:</span>
+              <div class="flex items-center gap-1">
+                <button data-obs="-10" class="btn-obs sim-btn px-2 py-1 rounded-lg text-xs font-mono">-10°</button>
+                <button data-obs="-1" class="btn-obs sim-btn px-2 py-1 rounded-lg text-xs font-mono">-1°</button>
+                <input id="inputObs" type="number" min="1" max="360" value="90" class="w-12 py-1 px-1 text-center rounded-lg sub-panel text-xs font-mono font-bold text-sky-600 dark:text-sky-300 focus:outline-none focus:border-sky-500" />
+                <button data-obs="1" class="btn-obs sim-btn px-2 py-1 rounded-lg text-xs font-mono">+1°</button>
+                <button data-obs="10" class="btn-obs sim-btn px-2 py-1 rounded-lg text-xs font-mono">+10°</button>
+              </div>
+            </div>
+
+            <!-- Separate DME Box with Show/Hide Toggle -->
+            <div class="sub-panel rounded-xl px-2.5 py-1.5 font-mono flex items-center justify-between gap-2">
+              <div id="basicDmeValues" class="grid grid-cols-3 gap-2 flex-1 text-center transition-opacity">
+                <div>
+                  <div id="lblDmeDist" class="text-[9px] text-slate-500 uppercase">DME TÁV</div>
+                  <div id="dmeDist" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">12.4 NM</div>
+                </div>
+                <div class="border-x border-slate-200 dark:border-slate-700/70">
+                  <div id="lblDmeGs" class="text-[9px] text-slate-500 uppercase">GS SEB</div>
+                  <div id="dmeGs" class="text-xs font-bold">120 KT</div>
+                </div>
+                <div>
+                  <div id="lblDmeEte" class="text-[9px] text-slate-500 uppercase">ETE IDŐ</div>
+                  <div id="dmeEte" class="text-xs font-bold text-amber-600 dark:text-amber-400">06 MIN</div>
+                </div>
+              </div>
+              <button id="btnToggleDme" class="sim-btn text-[10px] px-2 py-1 rounded-lg shrink-0 font-sans font-semibold">
+                Elrejt
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. BASIC ADF / RMI INDICATOR -->
+        <div class="instrument-card rounded-2xl p-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h2 id="titleAdf" class="text-xs font-bold tracking-wider uppercase text-slate-700 dark:text-slate-300">ADF / RMI Indikátor</h2>
+              <p class="text-[11px] text-amber-600 dark:text-amber-400 font-mono">NDB // 345.0 kHz</p>
+            </div>
+            <div class="text-right font-mono">
+              <div class="text-sm font-bold text-amber-600 dark:text-amber-300" id="readoutAdfMode">RMI (HDG)</div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400" id="readoutRb">RB 000°</div>
+            </div>
+          </div>
+
+          <div class="relative w-full aspect-square max-w-[255px] mx-auto my-1">
+            <canvas id="canvasAdf" class="w-full h-full block rounded-full"></canvas>
+          </div>
+
+          <div class="mt-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+            <div class="grid grid-cols-2 gap-1.5">
+              <button id="btnModeRmi" class="py-1 px-2 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-700 dark:text-amber-300 text-xs font-semibold transition">
+                RMI (Forgó)
+              </button>
+              <button id="btnModeFixed" class="py-1 px-2 rounded-lg sim-btn text-xs font-medium">
+                Fixed ADF (0°)
+              </button>
+            </div>
+
+            <div class="sub-panel rounded-xl px-2.5 py-1.5 font-mono flex items-center justify-between">
+              <div id="qdmQdrValues" class="flex items-center gap-3 text-xs transition-opacity">
+                <span><span class="text-slate-500">QDM:</span> <strong id="valQdm" class="text-amber-600 dark:text-amber-400">360°</strong></span>
+                <span><span class="text-slate-500">QDR:</span> <strong id="valQdr" class="text-sky-600 dark:text-sky-400">180°</strong></span>
+              </div>
+              <button id="btnToggleQdm" class="sim-btn text-[10px] px-2 py-0.5 rounded-lg font-sans font-semibold">
+                Elrejt
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================== -->
+      <!-- SUITE B: MODERN GARMIN EFIS HSI (GI 275 / G1000 Style Glass Display)-->
+      <!-- =================================================================== -->
+      <div id="suiteGarmin" class="hidden instrument-card rounded-2xl p-4 flex-col gap-3">
+        <!-- Garmin Top Bezel Header -->
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2.5">
+            <span class="px-2 py-0.5 rounded bg-sky-500/15 border border-sky-500/30 text-sky-700 dark:text-sky-300 font-mono text-[11px] font-bold">
+              EFIS HSI
+            </span>
+            <h2 id="titleGarminHsi" class="text-xs sm:text-sm font-bold tracking-wide uppercase">
+              Garmin GI 275 / G1000 Elektronikus HSI
+            </h2>
+          </div>
+
+          <!-- Garmin Bearing Pointer Softkeys (BRG 1 VOR / BRG 2 NDB) -->
+          <div class="flex flex-wrap items-center gap-1.5 font-mono text-xs">
+            <button id="btnBrg1" class="px-2.5 py-1 rounded-lg bg-sky-500/20 border border-sky-500/50 text-sky-700 dark:text-sky-300 font-semibold flex items-center gap-1.5 transition">
+              <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+              <span>BRG 1: VOR</span>
+            </button>
+            <button id="btnBrg2" class="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-700 dark:text-amber-300 font-semibold flex items-center gap-1.5 transition">
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>BRG 2: NDB</span>
+            </button>
+            <button id="btnToggleGarminHelper" class="sim-btn px-2.5 py-1 rounded-lg font-sans text-xs font-semibold">
+              Adatok elrejtése
+            </button>
+          </div>
+        </div>
+
+        <!-- Center Garmin Display + Side Controls -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+          <!-- Main Garmin EFIS Canvas -->
+          <div class="lg:col-span-8 flex justify-center">
+            <div class="relative w-full max-w-[430px] aspect-[4/3] rounded-2xl overflow-hidden border-2 border-slate-700 bg-[#050914] shadow-2xl">
+              <canvas id="canvasGarmin" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+            </div>
+          </div>
+
+          <!-- Garmin Rotary Knobs & Course/Bug Controls -->
+          <div class="lg:col-span-4 flex flex-col gap-3">
+            <!-- CRS (OBS) Knob Controls -->
+            <div class="sub-panel rounded-xl p-3 flex flex-col gap-2">
+              <div class="flex items-center justify-between font-mono text-xs">
+                <span class="font-bold text-fuchsia-600 dark:text-fuchsia-400">CRS / OBS</span>
+                <span id="garminCrsReadout" class="font-bold text-sm text-fuchsia-600 dark:text-fuchsia-400">090°</span>
+              </div>
+              <div class="grid grid-cols-4 gap-1 font-mono text-xs">
+                <button data-obs="-10" class="btn-obs sim-btn py-1.5 rounded-lg">-10°</button>
+                <button data-obs="-1" class="btn-obs sim-btn py-1.5 rounded-lg">-1°</button>
+                <button data-obs="1" class="btn-obs sim-btn py-1.5 rounded-lg">+1°</button>
+                <button data-obs="10" class="btn-obs sim-btn py-1.5 rounded-lg">+10°</button>
+              </div>
+              <button id="btnGarminDirectCrs" class="w-full py-1.5 rounded-lg bg-fuchsia-500/15 hover:bg-fuchsia-500/25 border border-fuchsia-500/40 text-fuchsia-700 dark:text-fuchsia-300 text-xs font-semibold transition">
+                Direct-To VOR (CRS Sync)
+              </button>
+            </div>
+
+            <!-- HDG Bug Knob Controls -->
+            <div class="sub-panel rounded-xl p-3 flex flex-col gap-2">
+              <div class="flex items-center justify-between font-mono text-xs">
+                <span class="font-bold text-sky-600 dark:text-sky-400">HDG BUG</span>
+                <span id="garminBugReadout" class="font-bold text-sm text-sky-600 dark:text-sky-400">360°</span>
+              </div>
+              <div class="grid grid-cols-5 gap-1 font-mono text-xs">
+                <button data-bug="-10" class="btn-bug sim-btn py-1.5 rounded-lg">-10°</button>
+                <button data-bug="-1" class="btn-bug sim-btn py-1.5 rounded-lg">-1°</button>
+                <button id="btnSyncBugGarmin" class="py-1.5 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-700 dark:text-sky-300 font-bold text-[11px]">SYNC</button>
+                <button data-bug="1" class="btn-bug sim-btn py-1.5 rounded-lg">+1°</button>
+                <button data-bug="10" class="btn-bug sim-btn py-1.5 rounded-lg">+10°</button>
+              </div>
+              <button id="btnAutoTurnBugGarmin" class="w-full py-1.5 rounded-lg sim-btn text-xs font-semibold flex items-center justify-center gap-1.5">
+                <span id="autoBugDotGarmin" class="w-2 h-2 rounded-full bg-slate-400"></span>
+                <span id="txtAutoTurnBugGarmin">HDG Bug követése (KI)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Garmin Bottom Digital Telemetry Strip -->
+        <div id="garminTelemetryStrip" class="grid grid-cols-4 sm:grid-cols-8 gap-2 pt-2 border-t border-slate-200 dark:border-slate-800 font-mono text-center transition-opacity">
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">CRS</div>
+            <div id="gValCrs" class="text-xs font-bold text-fuchsia-600 dark:text-fuchsia-400">090°</div>
+          </div>
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">HDG</div>
+            <div id="gValHdg" class="text-xs font-bold">360°</div>
+          </div>
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">TRK</div>
+            <div id="gValTrk" class="text-xs font-bold text-emerald-600 dark:text-emerald-400">360°</div>
+          </div>
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">DME</div>
+            <div id="gValDme" class="text-xs font-bold text-sky-600 dark:text-sky-400">12.4 NM</div>
+          </div>
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">GS</div>
+            <div id="gValGs" class="text-xs font-bold">120 KT</div>
+          </div>
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">ETE</div>
+            <div id="gValEte" class="text-xs font-bold text-amber-600 dark:text-amber-400">06 MIN</div>
+          </div>
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">NDB QDM</div>
+            <div id="gValQdm" class="text-xs font-bold text-amber-600 dark:text-amber-400">360°</div>
+          </div>
+          <div class="sub-panel rounded-xl py-1.5 px-1">
+            <div class="text-[9px] text-slate-500">VOR RDL</div>
+            <div id="gValRdl" class="text-xs font-bold text-sky-600 dark:text-sky-400">270°</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- =================================================================== -->
+      <!-- FLIGHT & ENVIRONMENT CONTROLS                                       -->
+      <!-- =================================================================== -->
+      <div class="instrument-card rounded-2xl p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" id="simStatusDot"></span>
+            <h3 id="titleControls" class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              Repülőgép &amp; Környezet Vezérlése
+            </h3>
+          </div>
+
+          <!-- Play/Pause & Sim Speed -->
+          <div class="flex items-center gap-2">
+            <button id="btnPlayPause" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm transition">
+              <svg id="iconPause" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <svg id="iconPlay" class="w-3.5 h-3.5 hidden" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span id="txtPlayPause">Szünet</span>
+            </button>
+
+            <div class="pill-container flex items-center rounded-xl p-0.5 font-mono text-xs">
+              <button data-speed="1" class="btn-speed px-2.5 py-1 rounded-lg bg-sky-500 text-white font-semibold">1x</button>
+              <button data-speed="2" class="btn-speed px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400">2x</button>
+              <button data-speed="4" class="btn-speed px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400">4x</button>
+              <button data-speed="8" class="btn-speed px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400">8x</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+
+          <!-- 1. Steering / Heading -->
+          <div class="sub-panel rounded-xl p-3 flex flex-col justify-between gap-2.5">
+            <div class="flex items-center justify-between">
+              <span id="lblSteering" class="text-xs font-semibold">Kormányzás (HDG)</span>
+              <span class="font-mono text-xs text-sky-600 dark:text-sky-400">
+                <span id="lblTargetHdg">Cél:</span> <strong id="targetHdgVal">360°</strong>
+              </span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-1.5">
+              <button id="btnTurnLeft" class="sim-btn py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center">
+                <span id="txtTurnLeft">↺ Balra</span>
+              </button>
+              <button id="btnWingsLevel" class="sim-btn py-2 px-2 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                Tartás
+              </button>
+              <button id="btnTurnRight" class="sim-btn py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center">
+                <span id="txtTurnRight">Jobbra ↻</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1 font-mono text-[11px]">
+              <button data-turn="-90" class="btn-rel-turn sim-btn py-1 rounded">-90°</button>
+              <button data-turn="-30" class="btn-rel-turn sim-btn py-1 rounded">-30°</button>
+              <button data-turn="30" class="btn-rel-turn sim-btn py-1 rounded">+30°</button>
+              <button data-turn="90" class="btn-rel-turn sim-btn py-1 rounded">+90°</button>
+            </div>
+
+            <input id="sliderHdg" type="range" min="1" max="360" value="360" class="w-full" />
+          </div>
+
+          <!-- 2. Airspeed (TAS) & Ground Track -->
+          <div class="sub-panel rounded-xl p-3 flex flex-col justify-between gap-2.5">
+            <div class="flex items-center justify-between">
+              <span id="lblTas" class="text-xs font-semibold">Sebesség (TAS)</span>
+              <span class="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400" id="tasVal">120 KT</span>
+            </div>
+
+            <input id="sliderTas" type="range" min="80" max="260" step="5" value="120" class="w-full" />
+
+            <div class="grid grid-cols-3 gap-1 font-mono text-[11px]">
+              <button data-tas="90" class="btn-tas sim-btn py-1 rounded">90 KT</button>
+              <button data-tas="120" class="btn-tas sim-btn py-1 rounded">120 KT</button>
+              <button data-tas="180" class="btn-tas sim-btn py-1 rounded">180 KT</button>
+            </div>
+
+            <div class="flex items-center justify-between pt-1 border-t border-slate-200 dark:border-slate-800 text-xs font-mono">
+              <span class="text-slate-500">Track / GS:</span>
+              <span id="readoutTrack" class="font-semibold">360° / 120 KT</span>
+            </div>
+          </div>
+
+          <!-- 3. Wind Vector & WCA / Headwind -->
+          <div class="sub-panel rounded-xl p-3 flex flex-col justify-between gap-2">
+            <div class="flex items-center justify-between">
+              <span id="lblWindTitle" class="text-xs font-semibold">Szél (Wind)</span>
+              <span class="font-mono text-xs font-bold text-sky-600 dark:text-cyan-400" id="windReadout">360° / 00 KT</span>
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-slate-500 font-mono">
+                <span id="lblWindFrom">Irány (Honnan fúj):</span>
+                <span id="windDirLabel">360°</span>
+              </div>
+              <input id="sliderWindDir" type="range" min="1" max="360" value="360" class="w-full" />
+            </div>
+
+            <div class="space-y-1">
+              <div class="flex justify-between text-[11px] text-slate-500 font-mono">
+                <span id="lblWindSpeed">Erősség:</span>
+                <span id="windSpdLabel">0 KT</span>
+              </div>
+              <input id="sliderWindSpd" type="range" min="0" max="50" step="1" value="0" class="w-full" />
+            </div>
+
+            <div class="flex justify-between items-center text-[11px] font-mono pt-0.5">
+              <span class="text-slate-500">WCA: <strong id="readoutWca" class="text-sky-600 dark:text-sky-300">0°</strong> | <span id="readoutHwTw">0 KT</span></span>
+              <button id="btnZeroWind" class="text-slate-500 hover:text-sky-600 dark:hover:text-sky-400 font-sans font-medium transition">
+                Szélcsend
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: TACTICAL MAP & IFR HOOD MODE (5 cols) -->
+    <section class="xl:col-span-5 instrument-card rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between min-h-[480px]">
+
+      <!-- Map Header -->
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div>
+          <h2 class="text-xs font-bold tracking-wider uppercase flex items-center gap-2">
+            <span id="titleMap">Taktikai Térkép &amp; Útvonal</span>
+            <span id="mapScaleBadge" class="px-2 py-0.5 rounded bg-sky-500/15 text-sky-700 dark:text-sky-400 font-mono text-[10px]">
+              5 NM / gyűrű
+            </span>
+          </h2>
+          <p id="subtitleMap" class="text-[11px] text-slate-500 dark:text-slate-400">
+            Húzd a repülőgépet vagy az adókat az áthelyezéshez
+          </p>
+        </div>
+
+        <!-- IFR Blind / Hood Mode Toggle -->
+        <button id="btnBlindMode" class="sim-btn px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+          <svg id="eyeOpenIcon" class="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <svg id="eyeClosedIcon" class="w-3.5 h-3.5 text-amber-500 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+          <span id="txtBlindMode">IFR Vakrepülés (Elrejt)</span>
+        </button>
+      </div>
+
+      <!-- Map Canvas Wrapper -->
+      <div id="mapContainer" class="relative flex-1 w-full min-h-[360px] rounded-xl overflow-hidden border border-slate-300 dark:border-slate-800">
+        <canvas id="canvasMap" class="w-full h-full block cursor-crosshair"></canvas>
+
+        <!-- Floating Map Controls (Zoom In/Out, Center View, Clear Trail) -->
+        <div class="absolute top-3 left-3 flex flex-col gap-1.5">
+          <button id="btnZoomIn" class="sim-btn w-8 h-8 rounded-lg font-mono text-sm font-bold flex items-center justify-center shadow">+</button>
+          <button id="btnZoomOut" class="sim-btn w-8 h-8 rounded-lg font-mono text-sm font-bold flex items-center justify-center shadow">−</button>
+          <button id="btnCenterMap" class="sim-btn w-8 h-8 rounded-lg flex items-center justify-center shadow" title="Térkép középre igazítása">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <line x1="12" y1="2" x2="12" y2="6"></line>
+              <line x1="12" y1="18" x2="12" y2="22"></line>
+              <line x1="2" y1="12" x2="6" y2="12"></line>
+              <line x1="18" y1="12" x2="22" y2="12"></line>
+            </svg>
+          </button>
+          <button id="btnClearTrail" class="sim-btn w-8 h-8 rounded-lg hover:text-rose-500 flex items-center justify-center shadow">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Bottom-Left Legend -->
+        <div class="app-header backdrop-blur-sm border border-slate-300/80 dark:border-slate-800 rounded-xl px-3 py-2 text-[11px] font-mono space-y-1 pointer-events-none absolute bottom-3 left-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-sm border border-sky-500 bg-sky-500/20 inline-block"></span>
+            <span>VOR (114.20)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full border border-dashed border-amber-500 bg-amber-500/20 inline-block"></span>
+            <span>NDB (345.0)</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-0.5 bg-sky-500 inline-block"></span>
+            <span id="legendObs" class="text-slate-500 dark:text-slate-400">Kiválasztott VOR Radiál</span>
+          </div>
+        </div>
+
+        <!-- Bottom-Right Live Telemetry -->
+        <div class="app-header backdrop-blur-sm border border-slate-300/80 dark:border-slate-800 rounded-xl px-3 py-2 text-[11px] font-mono text-right space-y-0.5 pointer-events-none absolute bottom-3 right-3">
+          <div class="text-slate-500">VOR RDL: <span id="teleRadial" class="text-sky-600 dark:text-sky-400 font-bold">270°</span></div>
+          <div class="text-slate-500">NDB QDM: <span id="teleQdm" class="text-amber-600 dark:text-amber-400 font-bold">360°</span></div>
+          <div class="text-slate-500"><span id="lblTeleNdbDist">NDB TÁV:</span> <span id="teleNdbDist" class="font-bold">10.0 NM</span></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- INSTRUCTOR HELP MODAL -->
+  <div id="helpModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="instrument-card rounded-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5 sm:p-6 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-200 dark:border-slate-800">
+        <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
+          <span class="text-sky-500 font-mono">//</span>
+          <span id="helpModalTitle">Rádiónavigációs Gyorssegédlet</span>
+        </h3>
+        <button id="btnCloseHelp" class="sim-btn p-1.5 rounded-lg">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <div id="helpModalBody" class="space-y-3.5 text-xs sm:text-sm leading-relaxed"></div>
+
+      <div class="mt-5 flex justify-end">
+        <button id="btnCloseHelpBottom" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold">
+          Értettem, vissza a szimulátorhoz
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIMULATOR ENGINE & CANVAS RENDERER -->
+  <script>
+    (() => {
+      "use strict";
+
+      // =========================================================================
+      // 4-LANGUAGE DICTIONARY (HU | EN | DE | IT) — Double-quoted for safety
+      // =========================================================================
+      const I18N = {
+        hu: {
+          subtitle: "Interaktív rádiónavigációs műszer- és eljárásszimulátor",
+          avionicsBasic: "Alap műszerek (CDI/RMI)",
+          avionicsGarmin: "Modern Garmin (HSI)",
+          avionicsHintBasic: "Aktív műszerfal: Alap analóg órák (CDI / RMI)",
+          avionicsHintGarmin: "Aktív műszerfal: Modern Garmin GI 275 / G1000 EFIS HSI",
+          themeLight: "Világos",
+          themeDark: "Sötét",
+          themeTitle: "Sötét / Világos megjelenés váltása",
+          scenarioLabel: "Gyakorló feladat:",
+          randomize: "Új véletlen pozíció",
+          randomizeTitle: "Véletlenszerű repülőgép pozíció és irány",
+          reset: "Reset",
+          resetTitle: "Szituáció visszaállítása alaphelyzetbe",
+          help: "Segédlet",
+          helpTitle: "Navigációs gyorssegédlet (TO/FROM, QDM/QDR)",
+          taskBadge: "FELADAT",
+          pause: "Szünet",
+          resume: "Folytatás",
+          hdgTitle: "Pörgettyűs Iránytű",
+          syncBugTitle: "Bug szinkronizálása az aktuális irányra",
+          autoBugOff: "HDG Bug követése (KI)",
+          autoBugOn: "HDG Bug követése (BE)",
+          vorTitle: "VOR Indikátor",
+          vorCanvasTitle: "Húzd az egeret vagy görgess az OBS állításához",
+          dmeDist: "DME TÁV",
+          dmeGs: "GS SEB",
+          dmeEte: "ETE IDŐ",
+          adfTitle: "ADF / RMI Indikátor",
+          rmiMode: "RMI (Forgó)",
+          fixedMode: "Fixed ADF (0°)",
+          hide: "Elrejt",
+          show: "Mutat",
+          garminTitle: "Garmin GI 275 / G1000 Elektronikus HSI",
+          garminHideData: "Adatok elrejtése",
+          garminShowData: "Adatok mutatása",
+          garminDirect: "Direct-To VOR (CRS Sync)",
+          controlsTitle: "Repülőgép & Környezet Vezérlése",
+          steering: "Kormányzás (HDG)",
+          targetHdg: "Cél:",
+          turnLeft: "↺ Balra",
+          wingsLevel: "Tartás",
+          turnRight: "Jobbra ↻",
+          tasLabel: "Sebesség (TAS)",
+          windTitle: "Szél (Wind)",
+          windFrom: "Irány (Honnan fúj):",
+          windSpeed: "Erősség:",
+          zeroWind: "Szélcsend",
+          mapTitle: "Taktikai Térkép & Útvonal",
+          mapScaleBadge: "5 NM / gyűrű",
+          mapSubtitle: "Húzd a repülőgépet vagy az adókat az áthelyezéshez",
+          blindHide: "IFR Vakrepülés (Elrejt)",
+          blindShow: "Térkép megjelenítése",
+          blindCanvasBanner: "IFR VAKREPÜLÉS AKTÍV (Pozíció rejtve)",
+          zoomInTitle: "Nagyítás (+)",
+          zoomOutTitle: "Kicsinyítés (-)",
+          centerMapTitle: "Térkép középre igazítása",
+          clearTrailTitle: "Repült útvonal (csík) törlése",
+          legendObs: "Kiválasztott VOR Radiál",
+          teleNdbDist: "NDB TÁV:",
+          helpModalTitle: "Rádiónavigációs Gyorssegédlet",
+          helpCloseBtn: "Értettem, vissza a szimulátorhoz",
+          helpBodyHtml: `
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-sky-600 dark:text-sky-400 mb-1">1. VOR &amp; HSI (TO / FROM logika)</h4>
+              <p class="mb-1.5">A VOR állomástól kifelé mutató mágneses irányokat <strong>Radiálnak (RDL)</strong> nevezzük.</p>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>TO jelzés:</strong> Ha az OBS / CRS az állomás <em>felé</em> vezető irányra van állítva (QDM), a műszer <strong>TO</strong> zászlót mutat.</li>
+                <li><strong>FROM jelzés:</strong> Ha az OBS / CRS az aktuális radiálra mutat (kifelé), a műszer <strong>FROM</strong> zászlót mutat.</li>
+                <li><strong>CDI tű:</strong> Minden osztáspont <strong>2°</strong> eltérés (teljes kitérés = 10°). Mindig a <em>tű irányába</em> kormányozz!</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-amber-600 dark:text-amber-400 mb-1">2. NDB / ADF / RMI (QDM és QDR)</h4>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>QDM:</strong> Mágneses irány az állomás <em>felé</em>. RMI-n és a Garmin BRG 2 tűn ezt közvetlenül a nyíl hegye mutatja!</li>
+                <li><strong>QDR:</strong> Mágneses irány az állomástól <em>kifelé</em> (QDM ± 180°), ezt a tű farka jelzi.</li>
+                <li><strong>Fixed ADF:</strong> A műszer teteje mindig 0° (orrirány), a tű a relatív irányszöget (RB) mutatja: <code>QDM = (HDG + RB) mod 360</code>.</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-emerald-600 dark:text-emerald-400 mb-1">3. Holding belépések &amp; IFR Vakrepülés</h4>
+              <p>Standard (jobbos) várakozásnál az Inbound irányhoz képest 70°-os döntött választóvonallal határozzuk meg a belépést (<strong>Direct</strong>, <strong>Parallel</strong>, <strong>Teardrop</strong>). Kapcsold be az <em>IFR Vakrepülést</em>, és ellenőrizd a repült alakzatot!</p>
+            </div>
+          `,
+          scenarios: {
+            free: {
+              option: "1. Szabad repülés (Free Flight)",
+              desc: "Szabad repülés: Gyakorold a VOR radiálok követését és az NDB iránybemérést szabadon választott irányokkal.",
+              hint: "Tipp: Válts az Alap műszerek és a Modern Garmin HSI között a felső kapcsolóval!"
+            },
+            vor_intercept: {
+              option: "2. VOR Radiál elfogása (090° TO)",
+              desc: "Feladat: A gép a VOR-tól délnyugatra van. Állítsd az OBS/CRS-t 090°-ra (TO), és fogd el a 270°-os radiált (090° inbound) 30°-os elfogási szöggel (060° vagy 120° HDG)!",
+              hint: "Tipp: Ha a CDI tű jobbra tér ki, fordulj jobbra (pl. 120° HDG) a befogáshoz!"
+            },
+            vor_outbound: {
+              option: "3. VOR Outbound radiál tartása oldalszélben (240° FROM)",
+              desc: "Feladat: Repülj kifelé a VOR 240°-os radiálján (OBS/CRS = 240° FROM) erős északi szélben (340° / 25 KT)! Tartsd középen a tűt megfelelő szélkorrekciós szöggel (WCA)!",
+              hint: "Tipp: A 340°-os szél balra sodor, ezért tarts kb. 12°-kal jobbra (252° HDG)!"
+            },
+            ndb_tracking: {
+              option: "4. NDB QDM / QDR elfogás (360° QDM)",
+              desc: "Feladat: Repülj rá az NDB adóra a 360°-os QDM irányon (Észak felé)! Használd az RMI-t vagy a Garmin BRG 2 tűt, és fogd el a 360°-os vonalat!",
+              hint: "Tipp: Ha a tű feje 350°-on van, fordulj balra (pl. 320°-ra), hogy ráhúzd a tűt a 360°-ra!"
+            },
+            vor_holding: {
+              option: "5. VOR Standard Holding eljárás (180° INB)",
+              desc: "Feladat: Standard (jobbos) várakozás a VOR felett. Inbound: 180° (OBS/CRS = 180° TO). Határozd meg a belépést (Direct/Parallel/Teardrop), és repülj 1 perces szakaszokat!",
+              hint: "Tipp: Jelöld meg a 180°-ot a HDG Bug-gal, és próbáld ki IFR Vakrepülés módban!"
+            },
+            ndb_holding: {
+              option: "6. NDB Holding eljárás oldalszéllel (270° INB)",
+              desc: "Feladat: Standard (jobbos) várakozás az NDB felett (Inbound: 270° QDM, Outbound: 090°) enyhe déli szélben (180° / 15 KT). Ellenőrizd az alakzatot 2 kör után!",
+              hint: "Tipp: Az outbound szakaszon korrigálj a déli szél ellen (kb. 097° HDG), hogy ne sodródj el!"
+            }
+          }
+        },
+
+        en: {
+          subtitle: "Interactive Radio Navigation Instrument & Procedure Trainer",
+          avionicsBasic: "Basic Gauges (CDI/RMI)",
+          avionicsGarmin: "Modern Garmin (HSI)",
+          avionicsHintBasic: "Active Panel: Classic Analog Gauges (CDI / RMI)",
+          avionicsHintGarmin: "Active Panel: Modern Garmin GI 275 / G1000 EFIS HSI",
+          themeLight: "Light",
+          themeDark: "Dark",
+          themeTitle: "Toggle Dark / Light Theme",
+          scenarioLabel: "Scenario:",
+          randomize: "Random Position",
+          randomizeTitle: "Randomize aircraft position and heading",
+          reset: "Reset",
+          resetTitle: "Reset scenario to initial state",
+          help: "Guide",
+          helpTitle: "Navigation Quick Guide (TO/FROM, QDM/QDR)",
+          taskBadge: "TASK",
+          pause: "Pause",
+          resume: "Resume",
+          hdgTitle: "Directional Gyro",
+          syncBugTitle: "Sync HDG Bug to current heading",
+          autoBugOff: "Follow HDG Bug (OFF)",
+          autoBugOn: "Follow HDG Bug (ON)",
+          vorTitle: "VOR Indicator",
+          vorCanvasTitle: "Drag or scroll mouse wheel to set OBS",
+          dmeDist: "DME DIST",
+          dmeGs: "DME GS",
+          dmeEte: "DME ETE",
+          adfTitle: "ADF / RMI Indicator",
+          rmiMode: "RMI (Rotating)",
+          fixedMode: "Fixed ADF (0°)",
+          hide: "Hide",
+          show: "Show",
+          garminTitle: "Garmin GI 275 / G1000 Electronic HSI",
+          garminHideData: "Hide Telemetry",
+          garminShowData: "Show Telemetry",
+          garminDirect: "Direct-To VOR (CRS Sync)",
+          controlsTitle: "Aircraft & Environment Controls",
+          steering: "Steering (HDG)",
+          targetHdg: "Target:",
+          turnLeft: "↺ Left",
+          wingsLevel: "Hold",
+          turnRight: "Right ↻",
+          tasLabel: "Airspeed (TAS)",
+          windTitle: "Wind",
+          windFrom: "Direction (From):",
+          windSpeed: "Speed:",
+          zeroWind: "Calm",
+          mapTitle: "Tactical Map & Ground Track",
+          mapScaleBadge: "5 NM / ring",
+          mapSubtitle: "Drag aircraft or navaids directly to reposition",
+          blindHide: "IFR Hood Mode (Hide)",
+          blindShow: "Reveal Tactical Map",
+          blindCanvasBanner: "IFR HOOD MODE ACTIVE (Position Hidden)",
+          zoomInTitle: "Zoom In (+)",
+          zoomOutTitle: "Zoom Out (-)",
+          centerMapTitle: "Center Map View",
+          clearTrailTitle: "Clear flight path trail",
+          legendObs: "Selected VOR Radial / Course",
+          teleNdbDist: "NDB DIST:",
+          helpModalTitle: "Radio Navigation Quick Guide",
+          helpCloseBtn: "Got it, back to simulator",
+          helpBodyHtml: `
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-sky-600 dark:text-sky-400 mb-1">1. VOR &amp; HSI (TO / FROM Logic)</h4>
+              <p class="mb-1.5">Magnetic bearings radiating outward from a VOR station are called <strong>Radials (RDL)</strong>.</p>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>TO Flag:</strong> When the selected OBS/CRS matches the magnetic bearing <em>toward</em> the station (QDM), the indicator shows <strong>TO</strong>.</li>
+                <li><strong>FROM Flag:</strong> When OBS/CRS is set to the current radial (outbound), the indicator shows <strong>FROM</strong>.</li>
+                <li><strong>CDI Bar:</strong> Each dot equals <strong>2°</strong> deviation (full deflection = 10°). Always steer <em>toward the needle</em>!</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-amber-600 dark:text-amber-400 mb-1">2. NDB / ADF / RMI (QDM &amp; QDR)</h4>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>QDM:</strong> Magnetic bearing <em>TO</em> the station. On an RMI or Garmin BRG 2 pointer, the arrowhead points directly to QDM.</li>
+                <li><strong>QDR:</strong> Magnetic bearing <em>FROM</em> the station (QDM ± 180°), indicated by the tail of the needle.</li>
+                <li><strong>Fixed ADF:</strong> Top of the card is fixed at 0° (nose), showing Relative Bearing (RB): <code>QDM = (HDG + RB) mod 360</code>.</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-emerald-600 dark:text-emerald-400 mb-1">3. Holding Entries &amp; IFR Hood Mode</h4>
+              <p>For standard (right-hand) holds, entry sectors are divided by a 70° angled line relative to the inbound course (<strong>Direct</strong>, <strong>Parallel</strong>, <strong>Teardrop</strong>). Enable <em>IFR Hood Mode</em> to fly strictly on instruments, then reveal the map to inspect your pattern!</p>
+            </div>
+          `,
+          scenarios: {
+            free: {
+              option: "1. Free Flight",
+              desc: "Free Flight: Practice VOR radial tracking and NDB homing freely with customizable headings, wind, and instrument suites.",
+              hint: "Tip: Switch anytime between Basic Gauges (CDI/RMI) and Modern Garmin HSI in the top bar!"
+            },
+            vor_intercept: {
+              option: "2. VOR Radial Intercept (090° TO)",
+              desc: "Task: Aircraft is southwest of the VOR. Set OBS/CRS to 090° (TO) and intercept the 270° radial (090° inbound) using a 30° intercept angle (060° or 120° HDG)!",
+              hint: "Tip: When the CDI bar deflects right, turn right (e.g., 120° HDG) to intercept!"
+            },
+            vor_outbound: {
+              option: "3. Outbound Radial Tracking with Crosswind (240° FROM)",
+              desc: "Task: Track outbound on the VOR 240° radial (OBS/CRS = 240° FROM) in a strong northerly wind (340° / 25 KT)! Hold the needle centered using proper WCA!",
+              hint: "Tip: A 340° wind drifts you left, so crab approx. 12° right (252° HDG)!"
+            },
+            ndb_tracking: {
+              option: "4. NDB Homing & QDM Intercept (360° QDM)",
+              desc: "Task: Intercept and track inbound to the NDB on the 360° QDM (Northbound)! Use the RMI needle or Garmin BRG 2 pointer to capture the 360° bearing!",
+              hint: "Tip: If the pointer head sits at 350°, turn left (e.g., 320° HDG) to pull the head onto 360°!"
+            },
+            vor_holding: {
+              option: "5. Standard VOR Holding Pattern (180° INB)",
+              desc: "Task: Standard (right-hand) hold over the VOR. Inbound: 180° (OBS/CRS = 180° TO). Determine the entry (Direct/Parallel/Teardrop) and fly 1-minute legs!",
+              hint: "Tip: Mark 180° with the HDG Bug and try flying it with IFR Hood Mode enabled!"
+            },
+            ndb_holding: {
+              option: "6. NDB Holding Pattern with Crosswind (270° INB)",
+              desc: "Task: Standard (right-hand) hold over the NDB (Inbound: 270° QDM, Outbound: 090°) in a southerly wind (180° / 15 KT). Inspect your ground track after 2 circuits!",
+              hint: "Tip: Apply wind correction on the outbound leg (approx. 097° HDG) to prevent drift!"
+            }
+          }
+        },
+
+        de: {
+          subtitle: "Interaktiver Funknavigations-Instrumenten- und Verfahrenstrainer",
+          avionicsBasic: "Basisinstrumente (CDI/RMI)",
+          avionicsGarmin: "Modernes Garmin (HSI)",
+          avionicsHintBasic: "Aktives Panel: Klassische Analoginstrumente (CDI / RMI)",
+          avionicsHintGarmin: "Aktives Panel: Modernes Garmin GI 275 / G1000 EFIS HSI",
+          themeLight: "Hell",
+          themeDark: "Dunkel",
+          themeTitle: "Dunkel- / Hellmodus umschalten",
+          scenarioLabel: "Übungsaufgabe:",
+          randomize: "Zufallsposition",
+          randomizeTitle: "Zufällige Flugzeugposition und Steuerkurs",
+          reset: "Reset",
+          resetTitle: "Szenario auf Ausgangszustand zurücksetzen",
+          help: "Hilfe",
+          helpTitle: "Navigations-Kurzanleitung (TO/FROM, QDM/QDR)",
+          taskBadge: "AUFGABE",
+          pause: "Pause",
+          resume: "Weiter",
+          hdgTitle: "Kurskreisel (DG)",
+          syncBugTitle: "HDG-Bug auf aktuellen Kurs synchronisieren",
+          autoBugOff: "HDG-Bug folgen (AUS)",
+          autoBugOn: "HDG-Bug folgen (EIN)",
+          vorTitle: "VOR-Anzeige",
+          vorCanvasTitle: "Ziehen oder Mausrad drehen für OBS",
+          dmeDist: "DME ENT",
+          dmeGs: "GS GES",
+          dmeEte: "ETE ZEIT",
+          adfTitle: "ADF / RMI-Anzeige",
+          rmiMode: "RMI (Drehend)",
+          fixedMode: "Fixed ADF (0°)",
+          hide: "Verbergen",
+          show: "Anzeigen",
+          garminTitle: "Garmin GI 275 / G1000 Elektronisches HSI",
+          garminHideData: "Daten verbergen",
+          garminShowData: "Daten anzeigen",
+          garminDirect: "Direct-To VOR (CRS Sync)",
+          controlsTitle: "Flugzeug- & Umweltsteuerung",
+          steering: "Steuerung (HDG)",
+          targetHdg: "Ziel:",
+          turnLeft: "↺ Links",
+          wingsLevel: "Halten",
+          turnRight: "Rechts ↻",
+          tasLabel: "Fluggeschwindigkeit (TAS)",
+          windTitle: "Wind",
+          windFrom: "Richtung (Woher):",
+          windSpeed: "Stärke:",
+          zeroWind: "Windstille",
+          mapTitle: "Taktische Karte & Flugweg",
+          mapScaleBadge: "5 NM / Ring",
+          mapSubtitle: "Flugzeug oder Funkfeuer zum Verschieben ziehen",
+          blindHide: "IFR-Blindflughaube (Verbergen)",
+          blindShow: "Karte einblenden",
+          blindCanvasBanner: "IFR-BLINDFLUGHAUBE AKTIV (Position verborgen)",
+          zoomInTitle: "Vergrößern (+)",
+          zoomOutTitle: "Verkleinern (-)",
+          centerMapTitle: "Kartenansicht zentrieren",
+          clearTrailTitle: "Flugspur löschen",
+          legendObs: "Gewähltes VOR-Radial / Kurs",
+          teleNdbDist: "NDB ENT:",
+          helpModalTitle: "Funknavigations-Kurzanleitung",
+          helpCloseBtn: "Verstanden, zurück zum Simulator",
+          helpBodyHtml: `
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-sky-600 dark:text-sky-400 mb-1">1. VOR &amp; HSI (TO / FROM-Logik)</h4>
+              <p class="mb-1.5">Missweisende Peilungen, die von einer VOR-Station wegführen, heißen <strong>Radiale (RDL)</strong>.</p>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>TO-Anzeige:</strong> Entspricht OBS/CRS dem missweisenden Kurs <em>zur</em> Station (QDM), erscheint <strong>TO</strong>.</li>
+                <li><strong>FROM-Anzeige:</strong> Entspricht OBS/CRS dem aktuellen Radial (von der Station weg), erscheint <strong>FROM</strong>.</li>
+                <li><strong>CDI-Nadel:</strong> Jeder Punkt entspricht <strong>2°</strong> Abweichung (Vollausschlag = 10°). Immer <em>zur Nadel hin</em> steuern!</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-amber-600 dark:text-amber-400 mb-1">2. NDB / ADF / RMI (QDM &amp; QDR)</h4>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>QDM:</strong> Missweisender Kurs <em>ZUR</em> Station. Auf dem RMI oder Garmin BRG 2 zeigt die Pfeilspitze direkt auf das QDM.</li>
+                <li><strong>QDR:</strong> Missweisende Peilung <em>VON</em> der Station (QDM ± 180°), angezeigt durch das Nadelende.</li>
+                <li><strong>Fixed ADF:</strong> Oben steht fest 0° (Bug), die Nadel zeigt die Seitenpeilung (RB): <code>QDM = (HDG + RB) mod 360</code>.</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-emerald-600 dark:text-emerald-400 mb-1">3. Holding-Einflüge &amp; IFR-Haube</h4>
+              <p>Bei Standard-Warteschleifen (Rechtskurven) teilen 70°-Sektoren relativ zum Inbound-Kurs den Einflug auf (<strong>Direct</strong>, <strong>Parallel</strong>, <strong>Teardrop</strong>). Aktiviere die <em>IFR-Blindflughaube</em> für reinen Instrumentenflug!</p>
+            </div>
+          `,
+          scenarios: {
+            free: {
+              option: "1. Freier Flug (Free Flight)",
+              desc: "Freier Flug: Übe VOR-Radial-Tracking und NDB-Peilungen frei mit beliebigen Steuerkursen und Windbedingungen.",
+              hint: "Tipp: Wechsle oben jederzeit zwischen Basisinstrumenten (CDI/RMI) und Modernem Garmin HSI!"
+            },
+            vor_intercept: {
+              option: "2. VOR-Radial anschneiden (090° TO)",
+              desc: "Aufgabe: Das Flugzeug befindet sich südwestlich des VOR. Stelle OBS/CRS auf 090° (TO) und schneide das 270°-Radial (090° Inbound) mit 30° Anschneidewinkel (060° oder 120° HDG) an!",
+              hint: "Tipp: Schlägt die CDI-Nadel nach rechts aus, drehe nach rechts (z.B. 120° HDG)!"
+            },
+            vor_outbound: {
+              option: "3. VOR Outbound-Radial bei Seitenwind (240° FROM)",
+              desc: "Aufgabe: Fliege auf dem VOR-Radial 240° (OBS/CRS = 240° FROM) bei starkem Nordwind (340° / 25 KT) ab! Halte die Nadel mit passendem Luvwinkel (WCA) zentriert!",
+              hint: "Tipp: Wind aus 340° versetzt nach links – halte ca. 12° rechts vor (252° HDG)!"
+            },
+            ndb_tracking: {
+              option: "4. NDB Homing & QDM-Anschnitt (360° QDM)",
+              desc: "Aufgabe: Fliege das NDB auf dem 360°-QDM (Kurs Nord) an! Nutze die RMI-Nadel oder Garmin BRG 2, um die 360°-Peilung einzufangen!",
+              hint: "Tipp: Zeigt die Nadelspitze auf 350°, drehe nach links (z.B. 320° HDG), um sie auf 360° zu ziehen!"
+            },
+            vor_holding: {
+              option: "5. Standard VOR-Holding (180° INB)",
+              desc: "Aufgabe: Standard-Warteschleife (Rechtskurven) über dem VOR. Inbound: 180° (OBS/CRS = 180° TO). Bestimme den Einflug (Direct/Parallel/Teardrop) und fliege 1-Minuten-Schenkel!",
+              hint: "Tipp: Markiere 180° mit dem HDG-Bug und nutze die IFR-Blindflughaube!"
+            },
+            ndb_holding: {
+              option: "6. NDB-Holding mit Seitenwind (270° INB)",
+              desc: "Aufgabe: Standard-Warteschleife über dem NDB (Inbound: 270° QDM, Outbound: 090°) bei Südwind (180° / 15 KT). Prüfe die Flugspur nach 2 Runden!",
+              hint: "Tipp: Halte auf dem Outbound-Teil gegen den Südwind vor (ca. 097° HDG)!"
+            }
+          }
+        },
+
+        it: {
+          subtitle: "Simulatore Interattivo di Radionavigazione e Procedure Strumentali",
+          avionicsBasic: "Strumenti Base (CDI/RMI)",
+          avionicsGarmin: "Garmin Moderno (HSI)",
+          avionicsHintBasic: "Pannello attivo: Strumenti Analogici Classici (CDI / RMI)",
+          avionicsHintGarmin: "Pannello attivo: Garmin GI 275 / G1000 EFIS HSI Moderno",
+          themeLight: "Chiaro",
+          themeDark: "Scuro",
+          themeTitle: "Cambia tema Scuro / Chiaro",
+          scenarioLabel: "Scenario:",
+          randomize: "Posizione Casuale",
+          randomizeTitle: "Posizione e prua casuali",
+          reset: "Reset",
+          resetTitle: "Ripristina scenario iniziale",
+          help: "Guida",
+          helpTitle: "Guida Rapida Radionavigazione (TO/FROM, QDM/QDR)",
+          taskBadge: "COMPITO",
+          pause: "Pausa",
+          resume: "Riprendi",
+          hdgTitle: "Giro Direzionale (HDG)",
+          syncBugTitle: "Sincronizza HDG Bug sulla prua attuale",
+          autoBugOff: "Segui HDG Bug (OFF)",
+          autoBugOn: "Segui HDG Bug (ON)",
+          vorTitle: "Indicatore VOR",
+          vorCanvasTitle: "Trascina o usa la rotella per regolare OBS",
+          dmeDist: "DIST DME",
+          dmeGs: "VEL GS",
+          dmeEte: "TEMPO ETE",
+          adfTitle: "Indicatore ADF / RMI",
+          rmiMode: "RMI (Rotante)",
+          fixedMode: "ADF Fisso (0°)",
+          hide: "Nascondi",
+          show: "Mostra",
+          garminTitle: "Garmin GI 275 / G1000 HSI Elettronico",
+          garminHideData: "Nascondi Dati",
+          garminShowData: "Mostra Dati",
+          garminDirect: "Direct-To VOR (Sync CRS)",
+          controlsTitle: "Comandi Velivolo e Ambiente",
+          steering: "Pilotaggio (HDG)",
+          targetHdg: "Target:",
+          turnLeft: "↺ Sinistra",
+          wingsLevel: "Mantieni",
+          turnRight: "Destra ↻",
+          tasLabel: "Velocità (TAS)",
+          windTitle: "Vento (Wind)",
+          windFrom: "Direzione (Da dove):",
+          windSpeed: "Intensità:",
+          zeroWind: "Calma",
+          mapTitle: "Mappa Tattica e Traccia al Suolo",
+          mapScaleBadge: "5 NM / anello",
+          mapSubtitle: "Trascina velivolo o radioassistenze per spostarli",
+          blindHide: "Volo Strumentale (Nascondi)",
+          blindShow: "Mostra Mappa Tattica",
+          blindCanvasBanner: "VOLO STRUMENTALE ATTIVO (Posizione nascosta)",
+          zoomInTitle: "Ingrandisci (+)",
+          zoomOutTitle: "Riduci (-)",
+          centerMapTitle: "Centra vista mappa",
+          clearTrailTitle: "Cancella scia di volo",
+          legendObs: "Radiale / Rotta VOR Selezionata",
+          teleNdbDist: "DIST NDB:",
+          helpModalTitle: "Guida Rapida alla Radionavigazione",
+          helpCloseBtn: "Ho capito, torna al simulatore",
+          helpBodyHtml: `
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-sky-600 dark:text-sky-400 mb-1">1. VOR &amp; HSI (Logica TO / FROM)</h4>
+              <p class="mb-1.5">I rilevamenti magnetici in uscita da una stazione VOR sono chiamati <strong>Radiali (RDL)</strong>.</p>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>Bandierina TO:</strong> Quando OBS/CRS corrisponde al rilevamento magnetico <em>verso</em> la stazione (QDM), appare <strong>TO</strong>.</li>
+                <li><strong>Bandierina FROM:</strong> Quando OBS/CRS corrisponde alla radiale attuale (in uscita), appare <strong>FROM</strong>.</li>
+                <li><strong>Ago CDI:</strong> Ogni pallino equivale a <strong>2°</strong> di deviazione (fondo scala = 10°). Virare sempre <em>verso l'ago</em>!</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-amber-600 dark:text-amber-400 mb-1">2. NDB / ADF / RMI (QDM e QDR)</h4>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong>QDM:</strong> Rilevamento magnetico <em>VERSO</em> la stazione. Su RMI o Garmin BRG 2 la punta della freccia indica il QDM.</li>
+                <li><strong>QDR:</strong> Rilevamento magnetico <em>DALLA</em> stazione (QDM ± 180°), indicato dalla coda dell'ago.</li>
+                <li><strong>ADF Fisso:</strong> Lo 0° è fisso sul muso; l'ago indica il rilevamento polare (RB): <code>QDM = (HDG + RB) mod 360</code>.</li>
+              </ul>
+            </div>
+            <div class="sub-panel rounded-xl p-3.5">
+              <h4 class="font-bold text-emerald-600 dark:text-emerald-400 mb-1">3. Ingressi Holding e Volo Strumentale</h4>
+              <p>Nelle attese standard (virate a destra) i settori di ingresso sono divisi da una linea inclinata di 70° rispetto alla rotta inbound (<strong>Diretto</strong>, <strong>Parallelo</strong>, <strong>A goccia</strong>). Attiva la modalità <em>Volo Strumentale</em> per esercitarti solo sugli strumenti!</p>
+            </div>
+          `,
+          scenarios: {
+            free: {
+              option: "1. Volo Libero (Free Flight)",
+              desc: "Volo Libero: Esercitati con radiali VOR e rilevamenti NDB con prue, vento e strumentazione a scelta.",
+              hint: "Suggerimento: Passa in qualsiasi momento tra Strumenti Base (CDI/RMI) e Garmin Moderno HSI!"
+            },
+            vor_intercept: {
+              option: "2. Intercettamento Radiale VOR (090° TO)",
+              desc: "Compito: Il velivolo è a sud-ovest del VOR. Imposta OBS/CRS su 090° (TO) e intercetta la radiale 270° (090° inbound) con angolo di 30° (prua 060° o 120°)!",
+              hint: "Suggerimento: Se l'ago CDI devia a destra, vira a destra (es. prua 120°) per intercettare!"
+            },
+            vor_outbound: {
+              option: "3. Mantenimento Radiale Outbound con Vento (240° FROM)",
+              desc: "Compito: Segui in uscita la radiale VOR 240° (OBS/CRS = 240° FROM) con forte vento da nord (340° / 25 KT)! Mantieni l'ago centrato applicando il WCA!",
+              hint: "Suggerimento: Il vento da 340° scarroccia a sinistra: prua circa 12° a destra (252° HDG)!"
+            },
+            ndb_tracking: {
+              option: "4. Homing NDB e Intercettamento QDM (360° QDM)",
+              desc: "Compito: Dirigiti verso l'NDB sul QDM 360° (prua Nord)! Usa l'ago RMI o Garmin BRG 2 per catturare il rilevamento 360°!",
+              hint: "Suggerimento: Se la punta dell'ago è su 350°, vira a sinistra (es. prua 320°) per portarla su 360°!"
+            },
+            vor_holding: {
+              option: "5. Circuito di Attesa Standard VOR (180° INB)",
+              desc: "Compito: Holding standard (a destra) sul VOR. Inbound: 180° (OBS/CRS = 180° TO). Determina l'ingresso (Diretto/Parallelo/A goccia) e vola tratti da 1 minuto!",
+              hint: "Suggerimento: Segna 180° con l'HDG Bug e prova a volarlo in modalità Volo Strumentale!"
+            },
+            ndb_holding: {
+              option: "6. Circuito di Attesa NDB con Vento (270° INB)",
+              desc: "Compito: Holding standard sull'NDB (Inbound: 270° QDM, Outbound: 090°) con vento da sud (180° / 15 KT). Controlla la traccia dopo 2 circuiti!",
+              hint: "Suggerimento: Correggi la deriva nel tratto outbound (circa 097° HDG) contro il vento da sud!"
+            }
+          }
+        }
+      };
+
+      // =========================================================================
+      // AVIATION MATH HELPERS (0° = North, clockwise)
+      // =========================================================================
+      const DEG2RAD = Math.PI / 180;
+      const RAD2DEG = 180 / Math.PI;
+
+      function norm360(deg) {
+        let res = deg % 360;
+        if (res < 0) res += 360;
+        return res;
+      }
+
+      function fmtDeg(deg) {
+        let d = Math.round(norm360(deg));
+        if (d === 0) d = 360;
+        return String(d).padStart(3, "0") + "°";
+      }
+
+      function angleDiff(target, current) {
+        let diff = norm360(target) - norm360(current);
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        return diff;
+      }
+
+      function headingToVec(deg) {
+        const rad = deg * DEG2RAD;
+        return { x: Math.sin(rad), y: Math.cos(rad) };
+      }
+
+      function vecToHeading(dx, dy) {
+        return norm360(Math.atan2(dx, dy) * RAD2DEG);
+      }
+
+      // =========================================================================
+      // APPLICATION STATE
+      // =========================================================================
+      const getStored = (key, fallback) => {
+        try {
+          return localStorage.getItem(key) || fallback;
+        } catch (_) {
+          return fallback;
+        }
+      };
+
+      const state = {
+        lang: ["hu", "en", "de", "it"].includes(getStored("navsim_lang", "hu")) ? getStored("navsim_lang", "hu") : "hu",
+        theme: getStored("navsim_theme", "dark") === "light" ? "light" : "dark",
+        avionicsMode: getStored("navsim_avionics", "basic") === "garmin" ? "garmin" : "basic",
+
+        paused: false,
+        simSpeed: 1,
+        blindMode: false,
+        showDme: true,
+        showQdm: true,
+        showGarminHelper: true,
+        adfMode: "RMI", // "RMI" | "FIXED"
+        autoTurnBug: false,
+        showBrg1: true, // Garmin BRG 1 (VOR)
+        showBrg2: true, // Garmin BRG 2 (NDB)
+
+        ac: {
+          x: -10,
+          y: -8,
+          hdg: 360,
+          targetHdg: 360,
+          manualTurn: 0,
+          tas: 120,
+          gs: 120,
+          track: 360,
+          trail: []
+        },
+
+        instruments: {
+          hdgBug: 360,
+          obs: 90,
+          adfNeedleSmoothed: 0
+        },
+
+        vor: { x: 0, y: 0, id: "BDP", freq: "114.20" },
+        ndb: { x: 8, y: 6, id: "GY", freq: "345.0" },
+
+        wind: { dir: 360, speed: 0, headwind: 0 },
+
+        map: {
+          pixelsPerNm: 14,
+          panX: 0,
+          panY: 0,
+          draggingEntity: null,
+          panStart: null
+        },
+
+        scenario: "free",
+        trailTimer: 0
+      };
+
+      // =========================================================================
+      // TRAINING SCENARIOS
+      // =========================================================================
+      const SCENARIOS = {
+        free: {
+          setup: () => {
+            state.vor.x = 0; state.vor.y = 0;
+            state.ndb.x = 8; state.ndb.y = 6;
+            state.ac.x = -10; state.ac.y = -8;
+            state.ac.hdg = 360; state.ac.targetHdg = 360;
+            state.instruments.hdgBug = 360;
+            state.instruments.obs = 90;
+            state.ac.tas = 120;
+            state.wind.dir = 360; state.wind.speed = 0;
+          }
+        },
+        vor_intercept: {
+          setup: () => {
+            state.vor.x = 4; state.vor.y = 0;
+            state.ndb.x = -12; state.ndb.y = 10;
+            state.ac.x = -11; state.ac.y = -4.5;
+            state.ac.hdg = 90; state.ac.targetHdg = 90;
+            state.instruments.hdgBug = 90;
+            state.instruments.obs = 90;
+            state.ac.tas = 120;
+            state.wind.dir = 360; state.wind.speed = 0;
+          }
+        },
+        vor_outbound: {
+          setup: () => {
+            state.vor.x = 6; state.vor.y = 6;
+            state.ndb.x = -12; state.ndb.y = 10;
+            const vec240 = headingToVec(240);
+            state.ac.x = state.vor.x + vec240.x * 4;
+            state.ac.y = state.vor.y + vec240.y * 4;
+            state.ac.hdg = 240; state.ac.targetHdg = 240;
+            state.instruments.hdgBug = 240;
+            state.instruments.obs = 240;
+            state.ac.tas = 120;
+            state.wind.dir = 340; state.wind.speed = 25;
+          }
+        },
+        ndb_tracking: {
+          setup: () => {
+            state.ndb.x = 0; state.ndb.y = 5;
+            state.vor.x = -14; state.vor.y = -10;
+            state.ac.x = 4.5; state.ac.y = -9;
+            state.ac.hdg = 360; state.ac.targetHdg = 360;
+            state.instruments.hdgBug = 360;
+            state.instruments.obs = 360;
+            state.ac.tas = 120;
+            state.wind.dir = 360; state.wind.speed = 0;
+          }
+        },
+        vor_holding: {
+          setup: () => {
+            state.vor.x = 0; state.vor.y = 0;
+            state.ndb.x = 14; state.ndb.y = -10;
+            state.ac.x = -3; state.ac.y = 9;
+            state.ac.hdg = 150; state.ac.targetHdg = 150;
+            state.instruments.hdgBug = 180;
+            state.instruments.obs = 180;
+            state.ac.tas = 120;
+            state.wind.dir = 270; state.wind.speed = 10;
+          }
+        },
+        ndb_holding: {
+          setup: () => {
+            state.ndb.x = 0; state.ndb.y = 0;
+            state.vor.x = -14; state.vor.y = 12;
+            state.ac.x = 10; state.ac.y = 2;
+            state.ac.hdg = 260; state.ac.targetHdg = 260;
+            state.instruments.hdgBug = 270;
+            state.instruments.obs = 270;
+            state.ac.tas = 120;
+            state.wind.dir = 180; state.wind.speed = 15;
+          }
+        }
+      };
+
+      // =========================================================================
+      // THEME, AVIONICS MODE & LANGUAGE UPDATERS
+      // =========================================================================
+      function applyTheme(theme) {
+        state.theme = theme === "light" ? "light" : "dark";
+        try { localStorage.setItem("navsim_theme", state.theme); } catch (_) {}
+        const htmlEl = document.documentElement;
+        if (state.theme === "dark") {
+          htmlEl.classList.add("dark");
+          htmlEl.classList.remove("light");
+          document.getElementById("iconSun").classList.remove("hidden");
+          document.getElementById("iconMoon").classList.add("hidden");
+        } else {
+          htmlEl.classList.remove("dark");
+          htmlEl.classList.add("light");
+          document.getElementById("iconSun").classList.add("hidden");
+          document.getElementById("iconMoon").classList.remove("hidden");
+        }
+        const t = I18N[state.lang];
+        document.getElementById("txtThemeLabel").textContent = state.theme === "dark" ? t.themeLight : t.themeDark;
+      }
+
+      function applyAvionicsMode(mode) {
+        state.avionicsMode = mode === "garmin" ? "garmin" : "basic";
+        try { localStorage.setItem("navsim_avionics", state.avionicsMode); } catch (_) {}
+
+        const isBasic = state.avionicsMode === "basic";
+        const suiteBasic = document.getElementById("suiteBasic");
+        const suiteGarmin = document.getElementById("suiteGarmin");
+
+        if (isBasic) {
+          suiteBasic.classList.remove("hidden");
+          suiteBasic.classList.add("grid");
+          suiteGarmin.classList.add("hidden");
+          suiteGarmin.classList.remove("flex");
+        } else {
+          suiteBasic.classList.add("hidden");
+          suiteBasic.classList.remove("grid");
+          suiteGarmin.classList.remove("hidden");
+          suiteGarmin.classList.add("flex");
+        }
+
+        const btnBasic = document.getElementById("btnAvionicsBasic");
+        const btnGarmin = document.getElementById("btnAvionicsGarmin");
+        btnBasic.className = isBasic
+          ? "avionics-btn px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 bg-sky-600 text-white shadow-sm transition"
+          : "avionics-btn px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition";
+        btnGarmin.className = !isBasic
+          ? "avionics-btn px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 bg-sky-600 text-white shadow-sm transition"
+          : "avionics-btn px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition";
+
+        const t = I18N[state.lang];
+        document.getElementById("avionicsModeHint").textContent = isBasic ? t.avionicsHintBasic : t.avionicsHintGarmin;
+      }
+
+      function applyLanguage(lang) {
+        state.lang = ["hu", "en", "de", "it"].includes(lang) ? lang : "hu";
+        try { localStorage.setItem("navsim_lang", state.lang); } catch (_) {}
+        document.documentElement.lang = state.lang;
+
+        const t = I18N[state.lang];
+
+        document.querySelectorAll(".lang-btn").forEach(btn => {
+          const active = btn.dataset.lang === state.lang;
+          btn.className = active
+            ? "lang-btn px-2 py-1.5 rounded-lg bg-sky-600 text-white font-bold shadow-sm transition"
+            : "lang-btn px-2 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white font-semibold transition";
+        });
+
+        document.getElementById("uiSubtitle").textContent = t.subtitle;
+        document.getElementById("txtAvionicsBasic").textContent = t.avionicsBasic;
+        document.getElementById("txtAvionicsGarmin").textContent = t.avionicsGarmin;
+        document.getElementById("avionicsModeHint").textContent = state.avionicsMode === "basic" ? t.avionicsHintBasic : t.avionicsHintGarmin;
+        document.getElementById("txtThemeLabel").textContent = state.theme === "dark" ? t.themeLight : t.themeDark;
+        document.getElementById("btnThemeToggle").title = t.themeTitle;
+
+        document.getElementById("lblScenario").textContent = t.scenarioLabel;
+        document.getElementById("txtRandomize").textContent = t.randomize;
+        document.getElementById("btnRandomize").title = t.randomizeTitle;
+        document.getElementById("txtReset").textContent = t.reset;
+        document.getElementById("btnReset").title = t.resetTitle;
+        document.getElementById("txtHelp").textContent = t.help;
+        document.getElementById("btnHelpModal").title = t.helpTitle;
+        document.getElementById("badgeTask").textContent = t.taskBadge;
+
+        const sel = document.getElementById("scenarioSelect");
+        Array.from(sel.options).forEach(opt => {
+          if (t.scenarios[opt.value]) opt.textContent = t.scenarios[opt.value].option;
+        });
+        const curSc = t.scenarios[state.scenario] || t.scenarios.free;
+        document.getElementById("scenarioDescription").textContent = curSc.desc;
+        document.getElementById("scenarioHint").textContent = curSc.hint;
+
+        document.getElementById("txtPlayPause").textContent = state.paused ? t.resume : t.pause;
+        document.getElementById("titleHdg").textContent = t.hdgTitle;
+        document.getElementById("btnSyncBug").title = t.syncBugTitle;
+        updateAutoBugButtons();
+
+        document.getElementById("titleVor").textContent = t.vorTitle;
+        document.getElementById("canvasVor").title = t.vorCanvasTitle;
+        document.getElementById("lblDmeDist").textContent = t.dmeDist;
+        document.getElementById("lblDmeGs").textContent = t.dmeGs;
+        document.getElementById("lblDmeEte").textContent = t.dmeEte;
+        document.getElementById("btnToggleDme").textContent = state.showDme ? t.hide : t.show;
+
+        document.getElementById("titleAdf").textContent = t.adfTitle;
+        document.getElementById("btnModeRmi").textContent = t.rmiMode;
+        document.getElementById("btnModeFixed").textContent = t.fixedMode;
+        document.getElementById("btnToggleQdm").textContent = state.showQdm ? t.hide : t.show;
+
+        document.getElementById("titleGarminHsi").textContent = t.garminTitle;
+        document.getElementById("btnToggleGarminHelper").textContent = state.showGarminHelper ? t.garminHideData : t.garminShowData;
+        document.getElementById("btnGarminDirectCrs").textContent = t.garminDirect;
+
+        document.getElementById("titleControls").textContent = t.controlsTitle;
+        document.getElementById("lblSteering").textContent = t.steering;
+        document.getElementById("lblTargetHdg").textContent = t.targetHdg;
+        document.getElementById("txtTurnLeft").textContent = t.turnLeft;
+        document.getElementById("btnWingsLevel").textContent = t.wingsLevel;
+        document.getElementById("txtTurnRight").textContent = t.turnRight;
+        document.getElementById("lblTas").textContent = t.tasLabel;
+
+        document.getElementById("lblWindTitle").textContent = t.windTitle;
+        document.getElementById("lblWindFrom").textContent = t.windFrom;
+        document.getElementById("lblWindSpeed").textContent = t.windSpeed;
+        document.getElementById("btnZeroWind").textContent = t.zeroWind;
+
+        document.getElementById("titleMap").textContent = t.mapTitle;
+        document.getElementById("mapScaleBadge").textContent = t.mapScaleBadge;
+        document.getElementById("subtitleMap").textContent = t.mapSubtitle;
+        document.getElementById("txtBlindMode").textContent = state.blindMode ? t.blindShow : t.blindHide;
+        document.getElementById("btnZoomIn").title = t.zoomInTitle;
+        document.getElementById("btnZoomOut").title = t.zoomOutTitle;
+        document.getElementById("btnCenterMap").title = t.centerMapTitle;
+        document.getElementById("btnClearTrail").title = t.clearTrailTitle;
+        document.getElementById("legendObs").textContent = t.legendObs;
+        document.getElementById("lblTeleNdbDist").textContent = t.teleNdbDist;
+
+        document.getElementById("helpModalTitle").textContent = t.helpModalTitle;
+        document.getElementById("helpModalBody").innerHTML = t.helpBodyHtml;
+        document.getElementById("btnCloseHelpBottom").textContent = t.helpCloseBtn;
+      }
+
+      function updateAutoBugButtons() {
+        const t = I18N[state.lang];
+        const label = state.autoTurnBug ? t.autoBugOn : t.autoBugOff;
+        document.getElementById("txtAutoTurnBug").textContent = label;
+        document.getElementById("txtAutoTurnBugGarmin").textContent = label;
+
+        const dot1 = document.getElementById("autoBugDot");
+        const dot2 = document.getElementById("autoBugDotGarmin");
+        [dot1, dot2].forEach(d => {
+          d.className = state.autoTurnBug
+            ? "w-2 h-2 rounded-full bg-emerald-400 animate-pulse"
+            : "w-2 h-2 rounded-full bg-slate-400";
+        });
+      }
+
+      // =========================================================================
+      // NAVIGATION CALCULATIONS
+      // =========================================================================
+      function computeNavData() {
+        const dxVor = state.ac.x - state.vor.x;
+        const dyVor = state.ac.y - state.vor.y;
+        const vorDist = Math.hypot(dxVor, dyVor);
+        const vorRadial = vorDist < 0.01 ? 0 : vecToHeading(dxVor, dyVor);
+        const vorQdm = norm360(vorRadial + 180);
+
+        const obs = state.instruments.obs;
+        const diffTo = angleDiff(vorQdm, obs);
+        const absDiffTo = Math.abs(diffTo);
+
+        let vorFlag = "OFF";
+        let cdiDeflection = 0;
+
+        if (vorDist < 0.15) {
+          vorFlag = "OFF";
+          cdiDeflection = 0;
+        } else if (absDiffTo < 88) {
+          vorFlag = "TO";
+          cdiDeflection = Math.max(-1, Math.min(1, diffTo / 10));
+        } else if (absDiffTo > 92) {
+          vorFlag = "FROM";
+          const diffFrom = angleDiff(vorRadial, obs);
+          cdiDeflection = Math.max(-1, Math.min(1, diffFrom / 10));
+        } else {
+          vorFlag = "OFF";
+          cdiDeflection = 0;
+        }
+
+        const trackVec = headingToVec(state.ac.track);
+        const toVorUnit = vorDist > 0.001
+          ? { x: -dxVor / vorDist, y: -dyVor / vorDist }
+          : { x: 0, y: 0 };
+        const closingSpeed = Math.abs((trackVec.x * toVorUnit.x + trackVec.y * toVorUnit.y) * state.ac.gs);
+        const eteMin = closingSpeed > 5 ? (vorDist / closingSpeed) * 60 : null;
+
+        const dxNdb = state.ndb.x - state.ac.x;
+        const dyNdb = state.ndb.y - state.ac.y;
+        const ndbDist = Math.hypot(dxNdb, dyNdb);
+        const ndbQdm = ndbDist < 0.01 ? state.ac.hdg : vecToHeading(dxNdb, dyNdb);
+        const ndbQdr = norm360(ndbQdm + 180);
+        const ndbRb = norm360(ndbQdm - state.ac.hdg);
+
+        return {
+          vorDist,
+          vorRadial,
+          vorQdm,
+          vorFlag,
+          cdiDeflection,
+          eteMin,
+          ndbDist,
+          ndbQdm,
+          ndbQdr,
+          ndbRb
+        };
+      }
+
+      // =========================================================================
+      // PHYSICS & WIND TRIANGLE SIMULATION (60 FPS)
+      // =========================================================================
+      function updatePhysics(dt) {
+        if (state.paused) return;
+
+        const simDt = dt * state.simSpeed;
+        const stdRate = 3.0; // 3 deg/sec standard rate turn
+
+        if (state.autoTurnBug && state.ac.manualTurn === 0) {
+          state.ac.targetHdg = state.instruments.hdgBug;
+          document.getElementById("sliderHdg").value = state.ac.targetHdg;
+        }
+
+        if (state.ac.manualTurn !== 0) {
+          state.ac.hdg = norm360(state.ac.hdg + state.ac.manualTurn * stdRate * simDt);
+          state.ac.targetHdg = Math.round(state.ac.hdg) || 360;
+          document.getElementById("sliderHdg").value = state.ac.targetHdg;
+        } else {
+          const diff = angleDiff(state.ac.targetHdg, state.ac.hdg);
+          if (Math.abs(diff) > 0.05) {
+            const step = Math.sign(diff) * Math.min(Math.abs(diff), stdRate * simDt);
+            state.ac.hdg = norm360(state.ac.hdg + step);
+          } else {
+            state.ac.hdg = norm360(state.ac.targetHdg);
+          }
+        }
+
+        // Air velocity vector + Wind velocity vector = Ground velocity vector
+        const acVec = headingToVec(state.ac.hdg);
+        const vxAir = acVec.x * state.ac.tas;
+        const vyAir = acVec.y * state.ac.tas;
+
+        const windBlowTo = norm360(state.wind.dir + 180);
+        const wVec = headingToVec(windBlowTo);
+        const vxWind = wVec.x * state.wind.speed;
+        const vyWind = wVec.y * state.wind.speed;
+
+        // Headwind / Tailwind component along aircraft heading
+        state.wind.headwind = Math.round(-(vxWind * acVec.x + vyWind * acVec.y));
+
+        const vxGround = vxAir + vxWind;
+        const vyGround = vyAir + vyWind;
+
+        state.ac.gs = Math.hypot(vxGround, vyGround);
+        state.ac.track = state.ac.gs > 0.5 ? vecToHeading(vxGround, vyGround) : state.ac.hdg;
+
+        if (state.map.draggingEntity !== "ac") {
+          state.ac.x += (vxGround / 3600) * simDt;
+          state.ac.y += (vyGround / 3600) * simDt;
+        }
+
+        state.trailTimer += simDt;
+        if (state.trailTimer >= 1.5) {
+          state.trailTimer = 0;
+          const lastPt = state.ac.trail[state.ac.trail.length - 1];
+          if (!lastPt || Math.hypot(state.ac.x - lastPt.x, state.ac.y - lastPt.y) > 0.08) {
+            state.ac.trail.push({ x: state.ac.x, y: state.ac.y });
+            if (state.ac.trail.length > 700) state.ac.trail.shift();
+          }
+        }
+
+        const nav = computeNavData();
+        const targetNeedle = state.adfMode === "RMI" ? nav.ndbQdm : nav.ndbRb;
+        const needleDiff = angleDiff(targetNeedle, state.instruments.adfNeedleSmoothed);
+        state.instruments.adfNeedleSmoothed = norm360(
+          state.instruments.adfNeedleSmoothed + needleDiff * Math.min(1, dt * 8)
+        );
+      }
+
+      // =========================================================================
+      // HIDPI CANVAS HELPER
+      // =========================================================================
+      function setupHiDpiCanvas(canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.max(10, Math.round(rect.width * dpr));
+        const h = Math.max(10, Math.round(rect.height * dpr));
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
+        }
+        const ctx = canvas.getContext("2d");
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        return { ctx, width: rect.width, height: rect.height };
+      }
+
+      // =========================================================================
+      // SHARED INSTRUMENT BEZEL & COMPASS CARD
+      // =========================================================================
+      function drawInstrumentBezel(ctx, cx, cy, r) {
+        const grad = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+        grad.addColorStop(0, "#1e293b");
+        grad.addColorStop(0.5, "#0f172a");
+        grad.addColorStop(1, "#020617");
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#334155";
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.92, 0, Math.PI * 2);
+        ctx.fillStyle = "#070c18";
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#1e293b";
+        ctx.stroke();
+
+        const screwDist = r * 0.88;
+        [45, 135, 225, 315].forEach(ang => {
+          const rad = ang * DEG2RAD;
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(rad) * screwDist, cy + Math.sin(rad) * screwDist, 2.3, 0, Math.PI * 2);
+          ctx.fillStyle = "#1e293b";
+          ctx.fill();
+        });
+      }
+
+      function drawCompassCard(ctx, cx, cy, r, rotationDeg, accentColor = "#e2e8f0", cardScale = 0.86) {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(-rotationDeg * DEG2RAD);
+
+        const cardR = r * cardScale;
+        const labels = {
+          0: "N", 30: "3", 60: "6", 90: "E", 120: "12", 150: "15",
+          180: "S", 210: "21", 240: "24", 270: "W", 300: "30", 330: "33"
+        };
+
+        for (let deg = 0; deg < 360; deg += 5) {
+          const rad = (deg - 90) * DEG2RAD;
+          const isMajor = deg % 30 === 0;
+          const isMed = deg % 10 === 0;
+          const innerR = isMajor ? cardR * 0.80 : isMed ? cardR * 0.85 : cardR * 0.90;
+
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(rad) * innerR, Math.sin(rad) * innerR);
+          ctx.lineTo(Math.cos(rad) * cardR, Math.sin(rad) * cardR);
+          ctx.strokeStyle = isMajor ? "#f8fafc" : isMed ? "#94a3b8" : "#475569";
+          ctx.lineWidth = isMajor ? 2 : isMed ? 1.3 : 0.8;
+          ctx.stroke();
+
+          if (isMajor) {
+            ctx.save();
+            const textR = cardR * 0.65;
+            ctx.translate(Math.cos(rad) * textR, Math.sin(rad) * textR);
+            ctx.rotate(deg * DEG2RAD);
+            ctx.font = `700 ${Math.round(r * 0.105)}px "JetBrains Mono", monospace`;
+            ctx.fillStyle = deg === 0 ? "#f43f5e" : accentColor;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(labels[deg], 0, 0);
+            ctx.restore();
+          }
+        }
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // SUITE A-1: DIRECTIONAL GYRO (HDG)
+      // =========================================================================
+      function renderHdgInstrument() {
+        const canvas = document.getElementById("canvasHdg");
+        const { ctx, width, height } = setupHiDpiCanvas(canvas);
+        const cx = width / 2;
+        const cy = height / 2;
+        const r = Math.min(cx, cy) - 4;
+
+        ctx.clearRect(0, 0, width, height);
+        drawInstrumentBezel(ctx, cx, cy, r);
+        drawCompassCard(ctx, cx, cy, r, state.ac.hdg);
+
+        // Orange HDG Bug
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate((state.instruments.hdgBug - state.ac.hdg) * DEG2RAD);
+        const bugR = r * 0.86;
+        ctx.fillStyle = "#f59e0b";
+        ctx.beginPath();
+        ctx.moveTo(-7, -bugR - 3);
+        ctx.lineTo(7, -bugR - 3);
+        ctx.lineTo(7, -bugR + 5);
+        ctx.lineTo(3, -bugR + 5);
+        ctx.lineTo(0, -bugR + 1);
+        ctx.lineTo(-3, -bugR + 5);
+        ctx.lineTo(-7, -bugR + 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Top Lubber Line
+        ctx.fillStyle = "#f8fafc";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.85);
+        ctx.lineTo(cx - 6, cy - r * 0.94);
+        ctx.lineTo(cx + 6, cy - r * 0.94);
+        ctx.closePath();
+        ctx.fill();
+
+        // Center Airplane Silhouette
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 2.2;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.30);
+        ctx.lineTo(0, r * 0.28);
+        ctx.moveTo(-r * 0.28, -r * 0.03);
+        ctx.lineTo(r * 0.28, -r * 0.03);
+        ctx.moveTo(-r * 0.11, r * 0.20);
+        ctx.lineTo(r * 0.11, r * 0.20);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // SUITE A-2: MECHANICAL VOR INDICATOR (CDI)
+      // =========================================================================
+      function renderVorInstrument(nav) {
+        const canvas = document.getElementById("canvasVor");
+        const { ctx, width, height } = setupHiDpiCanvas(canvas);
+        const cx = width / 2;
+        const cy = height / 2;
+        const r = Math.min(cx, cy) - 4;
+
+        ctx.clearRect(0, 0, width, height);
+        drawInstrumentBezel(ctx, cx, cy, r);
+        drawCompassCard(ctx, cx, cy, r, state.instruments.obs, "#bae6fd");
+
+        // Top OBS Index
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.85);
+        ctx.lineTo(cx - 6, cy - r * 0.94);
+        ctx.lineTo(cx + 6, cy - r * 0.94);
+        ctx.closePath();
+        ctx.fill();
+
+        const innerR = r * 0.48;
+        ctx.beginPath();
+        ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+        ctx.fillStyle = "#050914";
+        ctx.fill();
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // 2-degree CDI dots
+        const maxSwing = innerR * 0.78;
+        for (let i = -5; i <= 5; i++) {
+          const px = cx + (i / 5) * maxSwing;
+          ctx.beginPath();
+          if (i === 0) {
+            ctx.arc(px, cy, 4.5, 0, Math.PI * 2);
+            ctx.strokeStyle = "#cbd5e1";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          } else {
+            ctx.arc(px, cy, 2, 0, Math.PI * 2);
+            ctx.fillStyle = "#94a3b8";
+            ctx.fill();
+          }
+        }
+
+        // TO / FROM / OFF Flag
+        ctx.save();
+        const flagX = cx + innerR * 0.42;
+        const flagY = cy - innerR * 0.34;
+        ctx.font = `700 ${Math.round(r * 0.085)}px "JetBrains Mono", monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        if (nav.vorFlag === "OFF") {
+          ctx.fillStyle = "#f43f5e";
+          ctx.fillRect(flagX - 16, flagY - 9, 32, 18);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText("OFF", flagX, flagY + 0.5);
+        } else {
+          ctx.fillStyle = nav.vorFlag === "TO" ? "#10b981" : "#38bdf8";
+          ctx.fillText(nav.vorFlag, flagX, flagY);
+          ctx.beginPath();
+          if (nav.vorFlag === "TO") {
+            ctx.moveTo(flagX, flagY - 13);
+            ctx.lineTo(flagX - 4, flagY - 8);
+            ctx.lineTo(flagX + 4, flagY - 8);
+          } else {
+            ctx.moveTo(flagX, flagY + 13);
+            ctx.lineTo(flagX - 4, flagY + 8);
+            ctx.lineTo(flagX + 4, flagY + 8);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+        ctx.restore();
+
+        // CDI Vertical Needle
+        const needleX = cx + nav.cdiDeflection * maxSwing;
+        ctx.save();
+        ctx.strokeStyle = nav.vorFlag === "OFF" ? "#64748b" : "#f8fafc";
+        ctx.lineWidth = 3;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(needleX, cy - innerR * 0.85);
+        ctx.lineTo(needleX, cy + innerR * 0.85);
+        ctx.stroke();
+        ctx.restore();
+
+        // OBS Rotary Knob Graphic
+        const knobX = cx - r * 0.72;
+        const knobY = cy + r * 0.72;
+        ctx.beginPath();
+        ctx.arc(knobX, knobY, r * 0.13, 0, Math.PI * 2);
+        ctx.fillStyle = "#1e293b";
+        ctx.fill();
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.font = `700 ${Math.round(r * 0.065)}px "Inter", sans-serif`;
+        ctx.fillStyle = "#38bdf8";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("OBS", knobX, knobY);
+      }
+
+      // =========================================================================
+      // SUITE A-3: BASIC ADF / RMI INDICATOR
+      // =========================================================================
+      function renderAdfInstrument() {
+        const canvas = document.getElementById("canvasAdf");
+        const { ctx, width, height } = setupHiDpiCanvas(canvas);
+        const cx = width / 2;
+        const cy = height / 2;
+        const r = Math.min(cx, cy) - 4;
+
+        ctx.clearRect(0, 0, width, height);
+        drawInstrumentBezel(ctx, cx, cy, r);
+
+        const cardRotation = state.adfMode === "RMI" ? state.ac.hdg : 0;
+        drawCompassCard(ctx, cx, cy, r, cardRotation, "#fde68a");
+
+        ctx.fillStyle = "#f59e0b";
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r * 0.85);
+        ctx.lineTo(cx - 6, cy - r * 0.94);
+        ctx.lineTo(cx + 6, cy - r * 0.94);
+        ctx.closePath();
+        ctx.fill();
+
+        const needleAngle = state.adfMode === "RMI"
+          ? norm360(state.instruments.adfNeedleSmoothed - state.ac.hdg)
+          : state.instruments.adfNeedleSmoothed;
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(needleAngle * DEG2RAD);
+
+        const needleLen = r * 0.74;
+        ctx.strokeStyle = "#f59e0b";
+        ctx.fillStyle = "#f59e0b";
+        ctx.lineWidth = 2.6;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -needleLen + 8);
+        ctx.lineTo(0, needleLen - 8);
+        ctx.stroke();
+
+        // Head (QDM)
+        ctx.beginPath();
+        ctx.moveTo(0, -needleLen);
+        ctx.lineTo(-6, -needleLen + 14);
+        ctx.lineTo(0, -needleLen + 10);
+        ctx.lineTo(6, -needleLen + 14);
+        ctx.closePath();
+        ctx.fill();
+
+        // Tail (QDR)
+        ctx.beginPath();
+        ctx.moveTo(-4, needleLen - 12);
+        ctx.lineTo(0, needleLen - 4);
+        ctx.lineTo(4, needleLen - 12);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, 7, 0, Math.PI * 2);
+        ctx.fillStyle = "#0f172a";
+        ctx.fill();
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // =========================================================================
+      // SUITE B: MODERN GARMIN EFIS HSI (GI 275 / G1000 STYLE)
+      // =========================================================================
+      function renderGarminHsi(nav) {
+        const canvas = document.getElementById("canvasGarmin");
+        const { ctx, width, height } = setupHiDpiCanvas(canvas);
+        const cx = width / 2;
+        const cy = height / 2 + 12;
+        const r = Math.min(width * 0.37, height * 0.41);
+
+        // Deep Garmin OLED glass background
+        ctx.fillStyle = "#040812";
+        ctx.fillRect(0, 0, width, height);
+
+        // Subtle outer screen frame gradient
+        const bgGrad = ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, Math.max(width, height) * 0.7);
+        bgGrad.addColorStop(0, "rgba(14, 24, 46, 0.55)");
+        bgGrad.addColorStop(1, "rgba(3, 6, 15, 0.95)");
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, width, height);
+
+        // Top Digital Heading Box (Garmin G1000 style)
+        const hdgBoxW = 64;
+        const hdgBoxH = 26;
+        const hdgBoxY = cy - r - 32;
+        ctx.fillStyle = "#091020";
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.roundRect(cx - hdgBoxW / 2, hdgBoxY, hdgBoxW, hdgBoxH, 5);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = `700 14px "JetBrains Mono", monospace`;
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fmtDeg(state.ac.hdg), cx, hdgBoxY + hdgBoxH / 2 + 0.5);
+
+        // Top-Left Corner: HDG Bug & CRS Digital Boxes
+        ctx.textAlign = "left";
+        ctx.font = `600 11px "JetBrains Mono", monospace`;
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText("HDG", 12, 18);
+        ctx.fillStyle = "#38bdf8";
+        ctx.font = `700 13px "JetBrains Mono", monospace`;
+        ctx.fillText(fmtDeg(state.instruments.hdgBug), 40, 18);
+
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = `600 11px "JetBrains Mono", monospace`;
+        ctx.fillText("CRS", 12, 36);
+        ctx.fillStyle = "#e879f9";
+        ctx.font = `700 13px "JetBrains Mono", monospace`;
+        ctx.fillText(fmtDeg(state.instruments.obs), 40, 36);
+
+        // Top-Right Corner: Live Wind Vector Box (Garmin style)
+        const windBoxX = width - 98;
+        const windBoxY = 10;
+        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+        ctx.strokeStyle = "#1e293b";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(windBoxX, windBoxY, 88, 36, 6);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.font = `700 11px "JetBrains Mono", monospace`;
+        ctx.fillStyle = "#e2e8f0";
+        ctx.textAlign = "right";
+        ctx.fillText(`${fmtDeg(state.wind.dir)}`, width - 16, windBoxY + 13);
+        ctx.fillStyle = "#38bdf8";
+        ctx.fillText(`${state.wind.speed} KT`, width - 16, windBoxY + 27);
+
+        // Wind Arrow relative to Aircraft Heading inside Wind Box
+        const wArrowCx = windBoxX + 18;
+        const wArrowCy = windBoxY + 18;
+        if (state.wind.speed > 0) {
+          ctx.save();
+          ctx.translate(wArrowCx, wArrowCy);
+          const relWindBlowTo = norm360(state.wind.dir + 180 - state.ac.hdg);
+          ctx.rotate(relWindBlowTo * DEG2RAD);
+          ctx.strokeStyle = "#38bdf8";
+          ctx.fillStyle = "#38bdf8";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 10);
+          ctx.lineTo(0, -9);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, -11);
+          ctx.lineTo(-4, -5);
+          ctx.lineTo(4, -5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.font = `600 9px "JetBrains Mono", monospace`;
+          ctx.fillStyle = "#64748b";
+          ctx.textAlign = "center";
+          ctx.fillText("CALM", wArrowCx + 4, wArrowCy + 3);
+        }
+
+        // Bottom-Left & Bottom-Right Bearing Info Tags (BRG 1 / BRG 2)
+        ctx.textAlign = "left";
+        ctx.font = `600 10px "JetBrains Mono", monospace`;
+        if (state.showBrg1) {
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillText(`BRG1 VOR ${fmtDeg(nav.vorQdm)}`, 12, height - 12);
+        }
+        ctx.textAlign = "right";
+        if (state.showBrg2) {
+          ctx.fillStyle = "#f59e0b";
+          ctx.fillText(`BRG2 NDB ${fmtDeg(nav.ndbQdm)}`, width - 12, height - 12);
+        }
+
+        // HSI Compass Rose (Rotating with HDG)
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fillStyle = "#080f1e";
+        ctx.fill();
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        drawCompassCard(ctx, cx, cy, r, state.ac.hdg, "#f8fafc", 0.96);
+
+        // Fixed 45-degree Lubber Ticks around outside of HSI
+        for (let a = 0; a < 360; a += 45) {
+          const rad = (a - 90) * DEG2RAD;
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(rad) * (r + 1), cy + Math.sin(rad) * (r + 1));
+          ctx.lineTo(cx + Math.cos(rad) * (r + 7), cy + Math.sin(rad) * (r + 7));
+          ctx.strokeStyle = a === 0 ? "#ffffff" : "#64748b";
+          ctx.lineWidth = a === 0 ? 2.5 : 1.5;
+          ctx.stroke();
+        }
+
+        // Cyan Garmin HDG Bug on Rose
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate((state.instruments.hdgBug - state.ac.hdg) * DEG2RAD);
+        ctx.fillStyle = "#38bdf8";
+        ctx.beginPath();
+        ctx.moveTo(-8, -r - 3);
+        ctx.lineTo(8, -r - 3);
+        ctx.lineTo(8, -r + 5);
+        ctx.lineTo(3, -r + 5);
+        ctx.lineTo(0, -r + 1);
+        ctx.lineTo(-3, -r + 5);
+        ctx.lineTo(-8, -r + 5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        // Garmin BRG 1 Pointer (VOR - Single Cyan Needle)
+        if (state.showBrg1 && nav.vorDist >= 0.15) {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate((nav.vorQdm - state.ac.hdg) * DEG2RAD);
+          const pR = r * 0.88;
+          ctx.strokeStyle = "#38bdf8";
+          ctx.fillStyle = "#38bdf8";
+          ctx.lineWidth = 2;
+          // Front segment
+          ctx.beginPath();
+          ctx.moveTo(0, -pR);
+          ctx.lineTo(0, -r * 0.42);
+          ctx.moveTo(0, r * 0.42);
+          ctx.lineTo(0, pR);
+          ctx.stroke();
+          // Arrowhead
+          ctx.beginPath();
+          ctx.moveTo(0, -pR);
+          ctx.lineTo(-5, -pR + 11);
+          ctx.lineTo(5, -pR + 11);
+          ctx.closePath();
+          ctx.fill();
+          // Tail barb
+          ctx.beginPath();
+          ctx.moveTo(-4, pR - 10);
+          ctx.lineTo(0, pR - 4);
+          ctx.lineTo(4, pR - 10);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Garmin BRG 2 Pointer (NDB - Double Amber/Green Needle)
+        if (state.showBrg2) {
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.rotate((nav.ndbQdm - state.ac.hdg) * DEG2RAD);
+          const pR = r * 0.85;
+          ctx.strokeStyle = "#f59e0b";
+          ctx.fillStyle = "#f59e0b";
+          ctx.lineWidth = 1.6;
+          // Double parallel lines
+          ctx.beginPath();
+          ctx.moveTo(-2.5, -pR + 10);
+          ctx.lineTo(-2.5, -r * 0.42);
+          ctx.moveTo(2.5, -pR + 10);
+          ctx.lineTo(2.5, -r * 0.42);
+          ctx.moveTo(-2.5, r * 0.42);
+          ctx.lineTo(-2.5, pR - 6);
+          ctx.moveTo(2.5, r * 0.42);
+          ctx.lineTo(2.5, pR - 6);
+          ctx.stroke();
+          // Head
+          ctx.beginPath();
+          ctx.moveTo(0, -pR);
+          ctx.lineTo(-6, -pR + 12);
+          ctx.lineTo(6, -pR + 12);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+
+        // Rotatable Magenta Course Pointer (CRS / OBS) & Lateral Deviation Bar
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate((state.instruments.obs - state.ac.hdg) * DEG2RAD);
+
+        const crsColor = "#e879f9"; // Garmin Magenta
+        const crsOuter = r * 0.90;
+        const barHalfLen = r * 0.36;
+        const maxSwing = r * 0.42;
+
+        // Lateral Deviation Scale Dots (perpendicular to course arrow)
+        for (let i = -2; i <= 2; i++) {
+          if (i === 0) continue;
+          const dx = (i / 2) * maxSwing;
+          ctx.beginPath();
+          ctx.arc(dx, 0, 2.5, 0, Math.PI * 2);
+          ctx.strokeStyle = "#cbd5e1";
+          ctx.lineWidth = 1.3;
+          ctx.stroke();
+        }
+
+        // Course Arrow Head (To)
+        ctx.strokeStyle = crsColor;
+        ctx.fillStyle = crsColor;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(0, -crsOuter);
+        ctx.lineTo(0, -barHalfLen - 4);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, -crsOuter);
+        ctx.lineTo(-7, -crsOuter + 14);
+        ctx.lineTo(7, -crsOuter + 14);
+        ctx.closePath();
+        ctx.fill();
+
+        // Course Arrow Tail (From)
+        ctx.beginPath();
+        ctx.moveTo(0, barHalfLen + 4);
+        ctx.lineTo(0, crsOuter);
+        ctx.stroke();
+
+        // TO / FROM Triangle on Course Arrow
+        if (nav.vorFlag === "TO" || nav.vorFlag === "FROM") {
+          ctx.beginPath();
+          if (nav.vorFlag === "TO") {
+            ctx.moveTo(0, -barHalfLen + 4);
+            ctx.lineTo(-6, -barHalfLen + 14);
+            ctx.lineTo(6, -barHalfLen + 14);
+          } else {
+            ctx.moveTo(0, barHalfLen - 4);
+            ctx.lineTo(-6, barHalfLen - 14);
+            ctx.lineTo(6, barHalfLen - 14);
+          }
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        // Lateral Deviation Bar (CDI)
+        const devX = nav.cdiDeflection * maxSwing;
+        ctx.strokeStyle = nav.vorFlag === "OFF" ? "#f43f5e" : crsColor;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.moveTo(devX, -barHalfLen);
+        ctx.lineTo(devX, barHalfLen);
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Center Fixed White Aircraft Icon
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2.4;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(0, -14);
+        ctx.lineTo(0, 14);
+        ctx.moveTo(-14, -1);
+        ctx.lineTo(14, -1);
+        ctx.moveTo(-6, 10);
+        ctx.lineTo(6, 10);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // TACTICAL RADAR / AERONAUTICAL CHART CANVAS (Dark & Light Theme Aware)
+      // =========================================================================
+      function renderTacticalMap() {
+        const canvas = document.getElementById("canvasMap");
+        const { ctx, width, height } = setupHiDpiCanvas(canvas);
+        const isDark = state.theme === "dark";
+
+        const cx = width / 2 + state.map.panX;
+        const cy = height / 2 + state.map.panY;
+        const ppm = state.map.pixelsPerNm;
+
+        const toPx = (xNm, yNm) => ({
+          x: cx + xNm * ppm,
+          y: cy - yNm * ppm
+        });
+
+        // Background
+        ctx.fillStyle = isDark ? "#070b14" : "#f8fafc";
+        ctx.fillRect(0, 0, width, height);
+
+        // Grid Lines (1 NM & 5 NM)
+        const startX = Math.floor((-cx) / ppm) - 2;
+        const endX = Math.ceil((width - cx) / ppm) + 2;
+        const startY = Math.floor((cy - height) / ppm) - 2;
+        const endY = Math.ceil(cy / ppm) + 2;
+
+        for (let gx = startX; gx <= endX; gx++) {
+          const px = cx + gx * ppm;
+          ctx.beginPath();
+          ctx.moveTo(px, 0);
+          ctx.lineTo(px, height);
+          if (isDark) {
+            ctx.strokeStyle = gx % 5 === 0 ? "rgba(56, 189, 248, 0.12)" : "rgba(30, 41, 59, 0.35)";
+          } else {
+            ctx.strokeStyle = gx % 5 === 0 ? "rgba(2, 132, 199, 0.16)" : "rgba(148, 163, 184, 0.22)";
+          }
+          ctx.lineWidth = gx === 0 ? 1.5 : 1;
+          ctx.stroke();
+        }
+        for (let gy = startY; gy <= endY; gy++) {
+          const py = cy - gy * ppm;
+          ctx.beginPath();
+          ctx.moveTo(0, py);
+          ctx.lineTo(width, py);
+          if (isDark) {
+            ctx.strokeStyle = gy % 5 === 0 ? "rgba(56, 189, 248, 0.12)" : "rgba(30, 41, 59, 0.35)";
+          } else {
+            ctx.strokeStyle = gy % 5 === 0 ? "rgba(2, 132, 199, 0.16)" : "rgba(148, 163, 184, 0.22)";
+          }
+          ctx.lineWidth = gy === 0 ? 1.5 : 1;
+          ctx.stroke();
+        }
+
+        // VOR Range Rings (5, 10, 15, 20, 25 NM)
+        const vorPx = toPx(state.vor.x, state.vor.y);
+        [5, 10, 15, 20, 25].forEach(nm => {
+          const radPx = nm * ppm;
+          if (radPx < Math.max(width, height) * 1.3) {
+            ctx.beginPath();
+            ctx.arc(vorPx.x, vorPx.y, radPx, 0, Math.PI * 2);
+            ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.15)" : "rgba(2, 132, 199, 0.22)";
+            ctx.setLineDash([4, 4]);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.font = `10px "JetBrains Mono", monospace`;
+            ctx.fillStyle = isDark ? "rgba(148, 163, 184, 0.6)" : "rgba(71, 85, 105, 0.75)";
+            ctx.fillText(`${nm}NM`, vorPx.x + 4, vorPx.y - radPx - 3);
+          }
+        });
+
+        // Selected VOR OBS / Course Line
+        const obsVec = headingToVec(state.instruments.obs);
+        const lineLen = 2500;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(vorPx.x, vorPx.y);
+        ctx.lineTo(vorPx.x + obsVec.x * lineLen, vorPx.y - obsVec.y * lineLen);
+        ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.50)" : "rgba(2, 132, 199, 0.65)";
+        ctx.lineWidth = 1.8;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(vorPx.x, vorPx.y);
+        ctx.lineTo(vorPx.x - obsVec.x * lineLen, vorPx.y + obsVec.y * lineLen);
+        ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.25)" : "rgba(2, 132, 199, 0.35)";
+        ctx.setLineDash([6, 6]);
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        // VOR Station Symbol
+        ctx.save();
+        ctx.translate(vorPx.x, vorPx.y);
+        ctx.beginPath();
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
+        ctx.strokeStyle = isDark ? "rgba(56, 189, 248, 0.45)" : "rgba(2, 132, 199, 0.55)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = i * 60 * DEG2RAD;
+          const hx = Math.cos(a) * 10;
+          const hy = Math.sin(a) * 10;
+          if (i === 0) ctx.moveTo(hx, hy);
+          else ctx.lineTo(hx, hy);
+        }
+        ctx.closePath();
+        ctx.fillStyle = isDark ? "rgba(14, 165, 233, 0.22)" : "rgba(2, 132, 199, 0.16)";
+        ctx.fill();
+        ctx.strokeStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 2, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? "#38bdf8" : "#0284c7";
+        ctx.fill();
+
+        ctx.font = `bold 11px "JetBrains Mono", monospace`;
+        ctx.fillStyle = isDark ? "#7dd3fc" : "#0369a1";
+        ctx.fillText(`VOR ${state.vor.id}`, 14, -10);
+        ctx.restore();
+
+        // NDB Beacon Symbol
+        const ndbPx = toPx(state.ndb.x, state.ndb.y);
+        ctx.save();
+        ctx.translate(ndbPx.x, ndbPx.y);
+        const ndbColor = isDark ? "#f59e0b" : "#d97706";
+        [7, 13, 19].forEach((rr, idx) => {
+          ctx.beginPath();
+          ctx.arc(0, 0, rr, 0, Math.PI * 2);
+          ctx.setLineDash([2, 3]);
+          ctx.strokeStyle = idx === 1 ? ndbColor : (isDark ? "rgba(245, 158, 11, 0.45)" : "rgba(217, 119, 6, 0.5)");
+          ctx.lineWidth = idx === 1 ? 1.8 : 1;
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = ndbColor;
+        ctx.fill();
+        ctx.font = `bold 11px "JetBrains Mono", monospace`;
+        ctx.fillStyle = isDark ? "#fcd34d" : "#b45309";
+        ctx.fillText(`NDB ${state.ndb.id}`, 14, -10);
+        ctx.restore();
+
+        // Wind Rose Indicator (Top-Right of Map)
+        ctx.save();
+        const wx = width - 46;
+        const wy = 44;
+        ctx.beginPath();
+        ctx.arc(wx, wy, 25, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? "rgba(11, 17, 32, 0.88)" : "rgba(255, 255, 255, 0.92)";
+        ctx.fill();
+        ctx.strokeStyle = isDark ? "#1e293b" : "#cbd5e1";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.font = `9px "JetBrains Mono", monospace`;
+        ctx.fillStyle = "#64748b";
+        ctx.textAlign = "center";
+        ctx.fillText("N", wx, wy - 15);
+
+        if (state.wind.speed > 0) {
+          ctx.save();
+          ctx.translate(wx, wy);
+          ctx.rotate(norm360(state.wind.dir + 180) * DEG2RAD);
+          const arrowCol = isDark ? "#38bdf8" : "#0284c7";
+          ctx.strokeStyle = arrowCol;
+          ctx.fillStyle = arrowCol;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 13);
+          ctx.lineTo(0, -12);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, -14);
+          ctx.lineTo(-4, -7);
+          ctx.lineTo(4, -7);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        } else {
+          ctx.fillStyle = "#64748b";
+          ctx.fillText("CALM", wx, wy + 3);
+        }
+        ctx.restore();
+
+        // IFR Hood Mode Banner (Hides aircraft & trail when active)
+        if (state.blindMode) {
+          ctx.save();
+          ctx.fillStyle = isDark ? "rgba(245, 158, 11, 0.14)" : "rgba(245, 158, 11, 0.16)";
+          ctx.strokeStyle = isDark ? "rgba(245, 158, 11, 0.5)" : "rgba(217, 119, 6, 0.6)";
+          ctx.lineWidth = 1.2;
+          const boxW = 285;
+          const boxH = 34;
+          ctx.beginPath();
+          ctx.roundRect(width / 2 - boxW / 2, 14, boxW, boxH, 10);
+          ctx.fill();
+          ctx.stroke();
+          ctx.font = `700 11px "Inter", sans-serif`;
+          ctx.fillStyle = isDark ? "#fbbf24" : "#b45309";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(I18N[state.lang].blindCanvasBanner, width / 2, 14 + boxH / 2);
+          ctx.restore();
+          return;
+        }
+
+        // Ground Track Flight Trail
+        if (state.ac.trail.length > 1) {
+          ctx.save();
+          ctx.beginPath();
+          state.ac.trail.forEach((pt, idx) => {
+            const p = toPx(pt.x, pt.y);
+            if (idx === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          });
+          ctx.strokeStyle = isDark ? "rgba(16, 185, 129, 0.8)" : "rgba(5, 150, 105, 0.85)";
+          ctx.lineWidth = 2.2;
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Aircraft Icon & Heading Vector
+        const acPx = toPx(state.ac.x, state.ac.y);
+        const hdgVec = headingToVec(state.ac.hdg);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(acPx.x, acPx.y);
+        ctx.lineTo(acPx.x + hdgVec.x * 55, acPx.y - hdgVec.y * 55);
+        ctx.strokeStyle = isDark ? "rgba(248, 250, 252, 0.45)" : "rgba(15, 23, 42, 0.45)";
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(acPx.x, acPx.y);
+        ctx.rotate(state.ac.hdg * DEG2RAD);
+
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.fillStyle = isDark ? "rgba(16, 185, 129, 0.16)" : "rgba(5, 150, 105, 0.16)";
+        ctx.fill();
+
+        ctx.fillStyle = isDark ? "#10b981" : "#059669";
+        ctx.strokeStyle = isDark ? "#ecfdf5" : "#064e3b";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(0, -12);
+        ctx.lineTo(3, -4);
+        ctx.lineTo(13, 1);
+        ctx.lineTo(13, 4);
+        ctx.lineTo(3, 2);
+        ctx.lineTo(2, 9);
+        ctx.lineTo(6, 12);
+        ctx.lineTo(6, 14);
+        ctx.lineTo(0, 12);
+        ctx.lineTo(-6, 14);
+        ctx.lineTo(-6, 12);
+        ctx.lineTo(-2, 9);
+        ctx.lineTo(-3, 2);
+        ctx.lineTo(-13, 4);
+        ctx.lineTo(-13, 1);
+        ctx.lineTo(-3, -4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // =========================================================================
+      // DIGITAL TELEMETRY & UI READOUTS
+      // =========================================================================
+      function updateReadouts(nav) {
+        const hdgStr = fmtDeg(state.ac.hdg);
+        const bugStr = fmtDeg(state.instruments.hdgBug);
+        const obsStr = fmtDeg(state.instruments.obs);
+        const gsStr = Math.round(state.ac.gs) + " KT";
+        const dmeStr = nav.vorDist.toFixed(1) + " NM";
+        const eteStr = nav.eteMin !== null
+          ? Math.min(999, Math.round(nav.eteMin)).toString().padStart(2, "0") + " MIN"
+          : "-- MIN";
+
+        // Basic Suite Readouts
+        document.getElementById("readoutHdg").textContent = hdgStr;
+        document.getElementById("readoutBug").textContent = "BUG " + bugStr;
+        document.getElementById("targetHdgVal").textContent = fmtDeg(state.ac.targetHdg);
+
+        document.getElementById("readoutObs").textContent = "OBS " + obsStr;
+        const flagEl = document.getElementById("readoutVorFlag");
+        flagEl.textContent = nav.vorFlag;
+        flagEl.className = "text-[11px] font-bold " + (
+          nav.vorFlag === "TO" ? "text-emerald-600 dark:text-emerald-400" :
+          nav.vorFlag === "FROM" ? "text-sky-600 dark:text-sky-400" : "text-rose-600 dark:text-rose-400"
+        );
+
+        document.getElementById("dmeDist").textContent = dmeStr;
+        document.getElementById("dmeGs").textContent = gsStr;
+        document.getElementById("dmeEte").textContent = eteStr;
+
+        document.getElementById("readoutRb").textContent = "RB " + fmtDeg(nav.ndbRb);
+        document.getElementById("valQdm").textContent = fmtDeg(nav.ndbQdm);
+        document.getElementById("valQdr").textContent = fmtDeg(nav.ndbQdr);
+
+        // Garmin Suite Readouts
+        document.getElementById("garminCrsReadout").textContent = obsStr;
+        document.getElementById("garminBugReadout").textContent = bugStr;
+        document.getElementById("gValCrs").textContent = obsStr;
+        document.getElementById("gValHdg").textContent = hdgStr;
+        document.getElementById("gValTrk").textContent = fmtDeg(state.ac.track);
+        document.getElementById("gValDme").textContent = dmeStr;
+        document.getElementById("gValGs").textContent = gsStr;
+        document.getElementById("gValEte").textContent = eteStr;
+        document.getElementById("gValQdm").textContent = fmtDeg(nav.ndbQdm);
+        document.getElementById("gValRdl").textContent = fmtDeg(nav.vorRadial);
+
+        // Flight & Wind Panel
+        document.getElementById("readoutTrack").textContent = `${fmtDeg(state.ac.track)} / ${gsStr}`;
+        const wca = Math.round(angleDiff(state.ac.hdg, state.ac.track));
+        const wcaStr = wca === 0 ? "0°" : (wca > 0 ? `+${wca}°R` : `${wca}°L`);
+        document.getElementById("readoutWca").textContent = wcaStr;
+
+        const hw = state.wind.headwind;
+        const hwStr = hw === 0 ? "0 KT" : (hw > 0 ? `HW ${hw}KT` : `TW ${Math.abs(hw)}KT`);
+        document.getElementById("readoutHwTw").textContent = hwStr;
+
+        // Map Telemetry
+        document.getElementById("teleRadial").textContent = fmtDeg(nav.vorRadial);
+        document.getElementById("teleQdm").textContent = fmtDeg(nav.ndbQdm);
+        document.getElementById("teleNdbDist").textContent = nav.ndbDist.toFixed(1) + " NM";
+      }
+
+      // =========================================================================
+      // CONTROLS & EVENT LISTENERS
+      // =========================================================================
+      function setObs(val) {
+        let v = Math.round(norm360(val));
+        if (v === 0) v = 360;
+        state.instruments.obs = v;
+        document.getElementById("inputObs").value = v;
+      }
+
+      function setHdgBug(val) {
+        let v = Math.round(norm360(val));
+        if (v === 0) v = 360;
+        state.instruments.hdgBug = v;
+      }
+
+      function setTargetHdg(val) {
+        let v = Math.round(norm360(val));
+        if (v === 0) v = 360;
+        state.ac.targetHdg = v;
+        document.getElementById("sliderHdg").value = v;
+      }
+
+      function updateWindLabels() {
+        document.getElementById("windDirLabel").textContent = fmtDeg(state.wind.dir);
+        document.getElementById("windSpdLabel").textContent = state.wind.speed + " KT";
+        document.getElementById("windReadout").textContent =
+          `${fmtDeg(state.wind.dir)} / ${String(state.wind.speed).padStart(2, "0")} KT`;
+      }
+
+      function loadScenario(key) {
+        const sc = SCENARIOS[key] || SCENARIOS.free;
+        const scText = I18N[state.lang].scenarios[key] || I18N[state.lang].scenarios.free;
+        state.scenario = key;
+        sc.setup();
+        state.ac.trail = [{ x: state.ac.x, y: state.ac.y }];
+        state.instruments.adfNeedleSmoothed = computeNavData().ndbQdm;
+        state.map.panX = 0;
+        state.map.panY = 0;
+
+        document.getElementById("scenarioDescription").textContent = scText.desc;
+        document.getElementById("scenarioHint").textContent = scText.hint;
+
+        document.getElementById("inputObs").value = state.instruments.obs;
+        document.getElementById("sliderHdg").value = state.ac.targetHdg;
+        document.getElementById("sliderTas").value = state.ac.tas;
+        document.getElementById("tasVal").textContent = state.ac.tas + " KT";
+        document.getElementById("sliderWindDir").value = state.wind.dir;
+        document.getElementById("sliderWindSpd").value = state.wind.speed;
+        updateWindLabels();
+      }
+
+      function togglePlayPause() {
+        state.paused = !state.paused;
+        const t = I18N[state.lang];
+        document.getElementById("txtPlayPause").textContent = state.paused ? t.resume : t.pause;
+        document.getElementById("iconPause").classList.toggle("hidden", state.paused);
+        document.getElementById("iconPlay").classList.toggle("hidden", !state.paused);
+        const dot = document.getElementById("simStatusDot");
+        dot.classList.toggle("bg-emerald-500", !state.paused);
+        dot.classList.toggle("bg-amber-500", state.paused);
+      }
+
+      function bindRotaryGauge(canvasEl, getter, setter) {
+        canvasEl.addEventListener("wheel", (e) => {
+          e.preventDefault();
+          setter(getter() + (e.deltaY < 0 ? 1 : -1));
+        }, { passive: false });
+
+        let dragging = false;
+        let lastAngle = 0;
+        const getAngle = (clientX, clientY) => {
+          const rect = canvasEl.getBoundingClientRect();
+          return Math.atan2(clientY - (rect.top + rect.height / 2), clientX - (rect.left + rect.width / 2)) * RAD2DEG;
+        };
+
+        canvasEl.addEventListener("pointerdown", (e) => {
+          dragging = true;
+          lastAngle = getAngle(e.clientX, e.clientY);
+          canvasEl.setPointerCapture(e.pointerId);
+        });
+        canvasEl.addEventListener("pointermove", (e) => {
+          if (!dragging) return;
+          const cur = getAngle(e.clientX, e.clientY);
+          let delta = cur - lastAngle;
+          if (delta > 180) delta -= 360;
+          if (delta < -180) delta += 360;
+          if (Math.abs(delta) >= 1) {
+            setter(getter() + Math.round(delta));
+            lastAngle = cur;
+          }
+        });
+        canvasEl.addEventListener("pointerup", () => { dragging = false; });
+      }
+
+      function bindEvents() {
+        // Avionics Mode Switcher
+        document.querySelectorAll(".avionics-btn").forEach(btn => {
+          btn.addEventListener("click", () => applyAvionicsMode(btn.dataset.avionics));
+        });
+
+        // 4-Language Switcher
+        document.querySelectorAll(".lang-btn").forEach(btn => {
+          btn.addEventListener("click", () => applyLanguage(btn.dataset.lang));
+        });
+
+        // Dark / Light Theme Toggle
+        document.getElementById("btnThemeToggle").addEventListener("click", () => {
+          applyTheme(state.theme === "dark" ? "light" : "dark");
+        });
+
+        // Scenario Selector, Randomize, Reset
+        document.getElementById("scenarioSelect").addEventListener("change", (e) => loadScenario(e.target.value));
+
+        document.getElementById("btnRandomize").addEventListener("click", () => {
+          const angle = Math.random() * 360;
+          const dist = 6 + Math.random() * 11;
+          const vec = headingToVec(angle);
+          state.ac.x = state.vor.x + vec.x * dist;
+          state.ac.y = state.vor.y + vec.y * dist;
+          const rndHdg = Math.floor(Math.random() * 360) + 1;
+          state.ac.hdg = rndHdg;
+          setTargetHdg(rndHdg);
+          state.ac.trail = [{ x: state.ac.x, y: state.ac.y }];
+        });
+
+        document.getElementById("btnReset").addEventListener("click", () => loadScenario(state.scenario));
+
+        // Play / Pause & Sim Speed
+        document.getElementById("btnPlayPause").addEventListener("click", togglePlayPause);
+
+        document.querySelectorAll(".btn-speed").forEach(btn => {
+          btn.addEventListener("click", () => {
+            state.simSpeed = Number(btn.dataset.speed);
+            document.querySelectorAll(".btn-speed").forEach(b => {
+              b.className = "btn-speed px-2.5 py-1 rounded-lg text-slate-500 dark:text-slate-400";
+            });
+            btn.className = "btn-speed px-2.5 py-1 rounded-lg bg-sky-500 text-white font-semibold";
+          });
+        });
+
+        // HDG Bug & Auto-Turn Toggle (both suites)
+        document.querySelectorAll(".btn-bug").forEach(btn => {
+          btn.addEventListener("click", () => setHdgBug(state.instruments.hdgBug + Number(btn.dataset.bug)));
+        });
+        document.getElementById("btnSyncBug").addEventListener("click", () => setHdgBug(state.ac.hdg));
+        document.getElementById("btnSyncBugGarmin").addEventListener("click", () => setHdgBug(state.ac.hdg));
+
+        const toggleAutoBug = () => {
+          state.autoTurnBug = !state.autoTurnBug;
+          if (state.autoTurnBug) setTargetHdg(state.instruments.hdgBug);
+          updateAutoBugButtons();
+        };
+        document.getElementById("btnAutoTurnBug").addEventListener("click", toggleAutoBug);
+        document.getElementById("btnAutoTurnBugGarmin").addEventListener("click", toggleAutoBug);
+
+        // OBS / CRS Buttons & Direct-To VOR
+        document.querySelectorAll(".btn-obs").forEach(btn => {
+          btn.addEventListener("click", () => setObs(state.instruments.obs + Number(btn.dataset.obs)));
+        });
+        document.getElementById("inputObs").addEventListener("change", (e) => setObs(Number(e.target.value) || 360));
+        document.getElementById("btnGarminDirectCrs").addEventListener("click", () => {
+          setObs(computeNavData().vorQdm);
+        });
+
+        // Mouse drag & wheel on both VOR gauge and Garmin HSI
+        bindRotaryGauge(document.getElementById("canvasVor"), () => state.instruments.obs, setObs);
+        bindRotaryGauge(document.getElementById("canvasGarmin"), () => state.instruments.obs, setObs);
+
+        // Show/Hide DME (Basic Suite)
+        document.getElementById("btnToggleDme").addEventListener("click", (e) => {
+          state.showDme = !state.showDme;
+          document.getElementById("basicDmeValues").classList.toggle("opacity-0", !state.showDme);
+          const t = I18N[state.lang];
+          e.target.textContent = state.showDme ? t.hide : t.show;
+        });
+
+        // ADF / RMI Mode & QDM Toggle
+        const btnRmi = document.getElementById("btnModeRmi");
+        const btnFixed = document.getElementById("btnModeFixed");
+        btnRmi.addEventListener("click", () => {
+          state.adfMode = "RMI";
+          document.getElementById("readoutAdfMode").textContent = "RMI (HDG)";
+          btnRmi.className = "py-1 px-2 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-700 dark:text-amber-300 text-xs font-semibold transition";
+          btnFixed.className = "py-1 px-2 rounded-lg sim-btn text-xs font-medium";
+        });
+        btnFixed.addEventListener("click", () => {
+          state.adfMode = "FIXED";
+          document.getElementById("readoutAdfMode").textContent = "FIXED (0°)";
+          btnFixed.className = "py-1 px-2 rounded-lg bg-amber-500/20 border border-amber-500/50 text-amber-700 dark:text-amber-300 text-xs font-semibold transition";
+          btnRmi.className = "py-1 px-2 rounded-lg sim-btn text-xs font-medium";
+        });
+
+        document.getElementById("btnToggleQdm").addEventListener("click", (e) => {
+          state.showQdm = !state.showQdm;
+          document.getElementById("qdmQdrValues").classList.toggle("opacity-0", !state.showQdm);
+          const t = I18N[state.lang];
+          e.target.textContent = state.showQdm ? t.hide : t.show;
+        });
+
+        // Garmin Softkeys (BRG 1, BRG 2, Telemetry Strip Toggle)
+        document.getElementById("btnBrg1").addEventListener("click", (e) => {
+          state.showBrg1 = !state.showBrg1;
+          e.currentTarget.classList.toggle("opacity-45", !state.showBrg1);
+        });
+        document.getElementById("btnBrg2").addEventListener("click", (e) => {
+          state.showBrg2 = !state.showBrg2;
+          e.currentTarget.classList.toggle("opacity-45", !state.showBrg2);
+        });
+        document.getElementById("btnToggleGarminHelper").addEventListener("click", (e) => {
+          state.showGarminHelper = !state.showGarminHelper;
+          document.getElementById("garminTelemetryStrip").classList.toggle("opacity-0", !state.showGarminHelper);
+          const t = I18N[state.lang];
+          e.target.textContent = state.showGarminHelper ? t.garminHideData : t.garminShowData;
+        });
+
+        // Aircraft Steering
+        const btnLeft = document.getElementById("btnTurnLeft");
+        const btnRight = document.getElementById("btnTurnRight");
+        const startManualTurn = (dir) => {
+          state.autoTurnBug = false;
+          updateAutoBugButtons();
+          state.ac.manualTurn = dir;
+        };
+        btnLeft.addEventListener("pointerdown", () => startManualTurn(-1));
+        btnLeft.addEventListener("pointerup", () => { state.ac.manualTurn = 0; });
+        btnLeft.addEventListener("pointerleave", () => { state.ac.manualTurn = 0; });
+
+        btnRight.addEventListener("pointerdown", () => startManualTurn(1));
+        btnRight.addEventListener("pointerup", () => { state.ac.manualTurn = 0; });
+        btnRight.addEventListener("pointerleave", () => { state.ac.manualTurn = 0; });
+
+        document.getElementById("btnWingsLevel").addEventListener("click", () => {
+          state.autoTurnBug = false;
+          updateAutoBugButtons();
+          state.ac.manualTurn = 0;
+          setTargetHdg(state.ac.hdg);
+        });
+
+        document.querySelectorAll(".btn-rel-turn").forEach(btn => {
+          btn.addEventListener("click", () => {
+            state.autoTurnBug = false;
+            updateAutoBugButtons();
+            setTargetHdg(state.ac.targetHdg + Number(btn.dataset.turn));
+          });
+        });
+
+        document.getElementById("sliderHdg").addEventListener("input", (e) => {
+          state.autoTurnBug = false;
+          updateAutoBugButtons();
+          setTargetHdg(Number(e.target.value));
+        });
+
+        window.addEventListener("keydown", (e) => {
+          if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+          if (e.key === "ArrowLeft") {
+            e.preventDefault();
+            state.autoTurnBug = false;
+            updateAutoBugButtons();
+            setTargetHdg(state.ac.targetHdg - 5);
+          } else if (e.key === "ArrowRight") {
+            e.preventDefault();
+            state.autoTurnBug = false;
+            updateAutoBugButtons();
+            setTargetHdg(state.ac.targetHdg + 5);
+          } else if (e.key === " ") {
+            e.preventDefault();
+            togglePlayPause();
+          }
+        });
+
+        // TAS & Wind Sliders
+        document.getElementById("sliderTas").addEventListener("input", (e) => {
+          state.ac.tas = Number(e.target.value);
+          document.getElementById("tasVal").textContent = state.ac.tas + " KT";
+        });
+        document.querySelectorAll(".btn-tas").forEach(btn => {
+          btn.addEventListener("click", () => {
+            state.ac.tas = Number(btn.dataset.tas);
+            document.getElementById("sliderTas").value = state.ac.tas;
+            document.getElementById("tasVal").textContent = state.ac.tas + " KT";
+          });
+        });
+
+        document.getElementById("sliderWindDir").addEventListener("input", (e) => {
+          state.wind.dir = Number(e.target.value);
+          updateWindLabels();
+        });
+        document.getElementById("sliderWindSpd").addEventListener("input", (e) => {
+          state.wind.speed = Number(e.target.value);
+          updateWindLabels();
+        });
+        document.getElementById("btnZeroWind").addEventListener("click", () => {
+          state.wind.speed = 0;
+          document.getElementById("sliderWindSpd").value = 0;
+          updateWindLabels();
+        });
+
+        // Map IFR Hood Mode, Zoom, Center, Clear Trail
+        document.getElementById("btnBlindMode").addEventListener("click", () => {
+          state.blindMode = !state.blindMode;
+          document.getElementById("eyeOpenIcon").classList.toggle("hidden", state.blindMode);
+          document.getElementById("eyeClosedIcon").classList.toggle("hidden", !state.blindMode);
+          const t = I18N[state.lang];
+          document.getElementById("txtBlindMode").textContent = state.blindMode ? t.blindShow : t.blindHide;
+        });
+
+        document.getElementById("btnZoomIn").addEventListener("click", () => {
+          state.map.pixelsPerNm = Math.min(36, state.map.pixelsPerNm + 3);
+        });
+        document.getElementById("btnZoomOut").addEventListener("click", () => {
+          state.map.pixelsPerNm = Math.max(6, state.map.pixelsPerNm - 3);
+        });
+        document.getElementById("btnCenterMap").addEventListener("click", () => {
+          state.map.panX = 0;
+          state.map.panY = 0;
+        });
+        document.getElementById("btnClearTrail").addEventListener("click", () => {
+          state.ac.trail = [{ x: state.ac.x, y: state.ac.y }];
+        });
+
+        // Map Drag-and-Drop (Aircraft, VOR, NDB) & Background Panning
+        const canvasMap = document.getElementById("canvasMap");
+        const getMapNmCoords = (clientX, clientY) => {
+          const rect = canvasMap.getBoundingClientRect();
+          const cx = rect.width / 2 + state.map.panX;
+          const cy = rect.height / 2 + state.map.panY;
+          return {
+            x: (clientX - rect.left - cx) / state.map.pixelsPerNm,
+            y: -(clientY - rect.top - cy) / state.map.pixelsPerNm
+          };
+        };
+
+        canvasMap.addEventListener("pointerdown", (e) => {
+          const pt = getMapNmCoords(e.clientX, e.clientY);
+          const hitRadius = 18 / state.map.pixelsPerNm;
+
+          if (!state.blindMode && Math.hypot(pt.x - state.ac.x, pt.y - state.ac.y) < hitRadius) {
+            state.map.draggingEntity = "ac";
+          } else if (Math.hypot(pt.x - state.vor.x, pt.y - state.vor.y) < hitRadius) {
+            state.map.draggingEntity = "vor";
+          } else if (Math.hypot(pt.x - state.ndb.x, pt.y - state.ndb.y) < hitRadius) {
+            state.map.draggingEntity = "ndb";
+          } else {
+            state.map.draggingEntity = "pan";
+            state.map.panStart = { x: e.clientX - state.map.panX, y: e.clientY - state.map.panY };
+          }
+          canvasMap.setPointerCapture(e.pointerId);
+        });
+
+        canvasMap.addEventListener("pointermove", (e) => {
+          if (!state.map.draggingEntity) return;
+          if (state.map.draggingEntity === "pan" && state.map.panStart) {
+            state.map.panX = e.clientX - state.map.panStart.x;
+            state.map.panY = e.clientY - state.map.panStart.y;
+            return;
+          }
+          const pt = getMapNmCoords(e.clientX, e.clientY);
+          if (state.map.draggingEntity === "ac") {
+            state.ac.x = pt.x;
+            state.ac.y = pt.y;
+            state.ac.trail = [{ x: pt.x, y: pt.y }];
+          } else if (state.map.draggingEntity === "vor") {
+            state.vor.x = pt.x;
+            state.vor.y = pt.y;
+          } else if (state.map.draggingEntity === "ndb") {
+            state.ndb.x = pt.x;
+            state.ndb.y = pt.y;
+          }
+        });
+
+        canvasMap.addEventListener("pointerup", () => {
+          state.map.draggingEntity = null;
+          state.map.panStart = null;
+        });
+
+        // Help Modal
+        const helpModal = document.getElementById("helpModal");
+        document.getElementById("btnHelpModal").addEventListener("click", () => helpModal.classList.remove("hidden"));
+        document.getElementById("btnCloseHelp").addEventListener("click", () => helpModal.classList.add("hidden"));
+        document.getElementById("btnCloseHelpBottom").addEventListener("click", () => helpModal.classList.add("hidden"));
+        helpModal.addEventListener("click", (e) => {
+          if (e.target === helpModal) helpModal.classList.add("hidden");
+        });
+      }
+
+      // =========================================================================
+      // MAIN ANIMATION LOOP
+      // =========================================================================
+      let lastTimestamp = 0;
+
+      function mainLoop(timestamp) {
+        if (!lastTimestamp) lastTimestamp = timestamp;
+        const dt = Math.min(0.1, (timestamp - lastTimestamp) / 1000);
+        lastTimestamp = timestamp;
+
+        updatePhysics(dt);
+        const nav = computeNavData();
+
+        if (state.avionicsMode === "basic") {
+          renderHdgInstrument();
+          renderVorInstrument(nav);
+          renderAdfInstrument();
+        } else {
+          renderGarminHsi(nav);
+        }
+
+        renderTacticalMap();
+        updateReadouts(nav);
+
+        requestAnimationFrame(mainLoop);
+      }
+
+      window.onload = () => {
+        bindEvents();
+        applyTheme(state.theme);
+        applyAvionicsMode(state.avionicsMode);
+        applyLanguage(state.lang);
+        loadScenario("free");
+        requestAnimationFrame(mainLoop);
+      };
+    })();
+  </script>
+</body>
+</html>
